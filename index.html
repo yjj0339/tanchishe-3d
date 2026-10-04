@@ -3,58 +3,89 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>贪吃蛇大作战 3D · 十六蛇混战</title>
+<title>贪吃蛇大作战 3D · 巨蛇修罗场</title>
 <link rel="icon" href="data:,">
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{width:100%;height:100%;overflow:hidden;font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;touch-action:none;user-select:none;-webkit-user-select:none}
 #c3d{position:fixed;inset:0;display:block}
 .hidden{display:none!important}
-#menu{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:30;background:radial-gradient(ellipse at 50% 30%,rgba(255,255,255,.35),rgba(255,255,255,.75))}
-.card{background:rgba(255,255,255,.92);border-radius:28px;box-shadow:0 18px 60px rgba(60,120,60,.25);padding:34px 44px;text-align:center;max-width:min(92vw,460px)}
-#menu h1{font-size:clamp(34px,7vw,52px);background:linear-gradient(90deg,#ff8a3d,#22b14c,#00a2ff);-webkit-background-clip:text;background-clip:text;color:transparent;letter-spacing:4px;font-weight:900}
-#menu .sub{color:#7aa06a;font-size:15px;margin:6px 0 22px;letter-spacing:2px}
-#nameInput{width:100%;padding:12px 16px;font-size:18px;border:2px solid #cfe8c0;border-radius:14px;outline:none;text-align:center;color:#3a5a33;background:#f7fff2}
-#nameInput:focus{border-color:#7cc95e}
-#skinRow{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin:18px 0 6px}
-.skin{width:34px;height:34px;border-radius:50%;border:3px solid transparent;cursor:pointer;transition:transform .12s}
-.skin.sel{border-color:#3a5a33;transform:scale(1.22)}
-.bigBtn{margin-top:20px;padding:14px 58px;font-size:22px;font-weight:800;letter-spacing:6px;color:#fff;background:linear-gradient(180deg,#7ed957,#3cb043);border:none;border-radius:999px;cursor:pointer;box-shadow:0 6px 0 #2e8b30,0 12px 24px rgba(60,180,60,.4)}
+#menu{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:30;background:radial-gradient(ellipse at 50% 28%,rgba(255,255,255,.55),rgba(255,255,255,.88));overflow-y:auto}
+.card{background:rgba(255,255,255,.94);border-radius:28px;box-shadow:0 18px 60px rgba(120,180,90,.22);padding:30px 42px;text-align:center;max-width:min(94vw,500px);margin:14px 0}
+#menu h1{font-size:clamp(32px,7vw,50px);background:linear-gradient(90deg,#ffb35c,#5ecb6a,#4db8ff);-webkit-background-clip:text;background-clip:text;color:transparent;letter-spacing:4px;font-weight:900}
+#menu .sub{color:#8fb283;font-size:14px;margin:4px 0 16px;letter-spacing:2px}
+#nameInput{width:100%;padding:11px 16px;font-size:17px;border:2px solid #d8ecd0;border-radius:14px;outline:none;text-align:center;color:#3a5a33;background:#fbffF6}
+#nameInput:focus{border-color:#8fd06e}
+.rowLabel{font-size:12px;color:#9dbd93;letter-spacing:3px;margin:14px 0 7px}
+#skinRow{display:flex;flex-wrap:wrap;gap:9px;justify-content:center}
+.skin{width:31px;height:31px;border-radius:50%;border:3px solid transparent;cursor:pointer;transition:transform .12s}
+.skin.sel{border-color:#3a5a33;transform:scale(1.2)}
+#patRow{display:flex;gap:8px;justify-content:center}
+.pat{padding:6px 16px;font-size:13px;border-radius:999px;border:2px solid #d8ecd0;background:#fff;color:#6b8a60;cursor:pointer;letter-spacing:2px}
+.pat.sel{background:linear-gradient(180deg,#8fdc6b,#4caf50);color:#fff;border-color:#4caf50;font-weight:700}
+#buffLegend{display:flex;flex-wrap:wrap;gap:6px 12px;justify-content:center;font-size:12px;color:#7d9a72;margin-top:4px}
+#buffLegend span{display:inline-flex;align-items:center;gap:4px}
+#buffLegend i{width:10px;height:10px;border-radius:50%;display:inline-block}
+.bigBtn{margin-top:18px;padding:13px 54px;font-size:21px;font-weight:800;letter-spacing:6px;color:#fff;background:linear-gradient(180deg,#8fdc6b,#3cb043);border:none;border-radius:999px;cursor:pointer;box-shadow:0 6px 0 #2e8b30,0 12px 24px rgba(80,190,80,.35)}
 .bigBtn:active{transform:translateY(4px);box-shadow:0 2px 0 #2e8b30}
-.ctrl-help{margin-top:20px;color:#8aa884;font-size:13px;line-height:1.9}
+.ctrl-help{margin-top:16px;color:#94b08a;font-size:12.5px;line-height:1.9}
 #hud{position:fixed;inset:0;pointer-events:none;z-index:20}
-#scoreCard{position:absolute;top:12px;left:12px;background:rgba(255,255,255,.88);border-radius:16px;padding:10px 16px;font-size:15px;color:#4a6b42;box-shadow:0 4px 14px rgba(60,120,60,.2);line-height:1.7}
-#scoreCard b{font-size:19px;color:#2e7d32}
-#board{position:absolute;top:12px;right:12px;background:rgba(255,255,255,.88);border-radius:16px;padding:10px 14px;min-width:168px;box-shadow:0 4px 14px rgba(60,120,60,.2)}
-#board h3{font-size:13px;color:#7aa06a;margin-bottom:6px;letter-spacing:2px;text-align:center}
+#scoreCard{position:absolute;top:12px;left:12px;background:rgba(255,255,255,.9);border-radius:16px;padding:9px 15px;font-size:14px;color:#4a6b42;box-shadow:0 4px 14px rgba(120,180,90,.2);line-height:1.65}
+#scoreCard b{font-size:18px;color:#2e7d32}
+#comboTag{position:absolute;top:96px;left:12px;color:#ff7043;font-weight:900;font-size:17px;letter-spacing:1px;text-shadow:0 1px 0 #fff,0 0 12px rgba(255,150,80,.6);display:none}
+#comboTag.show{display:block;animation:comboPop .25s}
+@keyframes comboPop{0%{transform:scale(1.5)}100%{transform:scale(1)}}
+#buffBar{position:absolute;top:124px;left:12px;display:flex;flex-direction:column;gap:5px}
+.chip{background:rgba(255,255,255,.92);border-radius:999px;padding:4px 12px;font-size:12.5px;font-weight:700;color:#456;box-shadow:0 3px 10px rgba(120,180,90,.22);display:flex;align-items:center;gap:6px;width:max-content}
+.chip i{width:9px;height:9px;border-radius:50%}
+.chip small{color:#9ab;font-weight:400}
+#board{position:absolute;top:12px;right:12px;background:rgba(255,255,255,.9);border-radius:16px;padding:10px 14px;min-width:168px;box-shadow:0 4px 14px rgba(120,180,90,.2)}
+#board h3{font-size:13px;color:#8fb283;margin-bottom:6px;letter-spacing:2px;text-align:center}
 #boardList{list-style:none;font-size:13px;color:#4a6b42}
 #boardList li{display:flex;justify-content:space-between;gap:10px;padding:2px 0}
 #boardList li.me{color:#e65100;font-weight:800}
 #boardList .rk{width:20px}
 #killfeed{position:absolute;top:118px;left:12px;display:flex;flex-direction:column;gap:5px;align-items:flex-start;max-width:46vw}
-.feedItem{background:rgba(255,255,255,.85);color:#5a7a52;font-size:12px;padding:4px 10px;border-radius:999px;animation:fadeout 6s forwards}
+#killfeed.comboShift{top:170px}
+.feedItem{background:rgba(255,255,255,.9);color:#5a7a52;font-size:12px;padding:4px 10px;border-radius:999px;animation:fadeout 6s forwards}
 @keyframes fadeout{0%{opacity:0;transform:translateX(-20px)}8%{opacity:1;transform:none}80%{opacity:1}100%{opacity:0}}
-#minimap{position:absolute;bottom:14px;left:14px;border-radius:50%;box-shadow:0 4px 14px rgba(60,120,60,.25);background:rgba(255,255,255,.75)}
-#boostBtn{position:absolute;bottom:26px;right:22px;width:88px;height:88px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#ffb35c,#ff7a1a);color:#fff;font-size:19px;font-weight:900;letter-spacing:2px;display:flex;align-items:center;justify-content:center;box-shadow:0 6px 0 #d45f00,0 10px 20px rgba(255,140,30,.45);pointer-events:auto}
+#minimap{position:absolute;bottom:14px;left:14px;border-radius:50%;box-shadow:0 4px 14px rgba(120,180,90,.25);background:rgba(255,255,255,.78)}
+#boostBtn{position:absolute;bottom:26px;right:22px;width:88px;height:88px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#ffc067,#ff8f2e);color:#fff;font-size:19px;font-weight:900;letter-spacing:2px;display:flex;align-items:center;justify-content:center;box-shadow:0 6px 0 #d4690a,0 10px 20px rgba(255,150,40,.4);pointer-events:auto}
 #boostBtn.on{transform:scale(.92);filter:brightness(1.15)}
-#muteBtn{position:absolute;top:12px;left:50%;transform:translateX(-50%);background:rgba(255,255,255,.85);color:#5a7a52;border:none;font-size:13px;padding:6px 14px;border-radius:999px;pointer-events:auto;cursor:pointer;box-shadow:0 3px 10px rgba(60,120,60,.2)}
+#topBtns{position:absolute;top:12px;left:50%;transform:translateX(-50%);display:flex;gap:8px}
+.hudBtn{background:rgba(255,255,255,.9);color:#5a7a52;border:none;font-size:13px;padding:6px 14px;border-radius:999px;pointer-events:auto;cursor:pointer;box-shadow:0 3px 10px rgba(120,180,90,.2)}
+#toastBox{position:fixed;top:64px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;gap:8px;align-items:center;z-index:28;pointer-events:none}
+.toast{background:rgba(255,255,255,.96);color:#5d4037;padding:9px 22px;border-radius:999px;font-size:14px;font-weight:700;box-shadow:0 6px 22px rgba(120,180,90,.35);animation:toastIn 4s forwards;border:2px solid #ffe0b2}
+.toast small{display:block;font-size:11px;color:#a1887f;font-weight:400;text-align:center}
+@keyframes toastIn{0%{opacity:0;transform:translateY(-18px)}6%{opacity:1;transform:none}85%{opacity:1}100%{opacity:0;transform:translateY(-8px)}}
 #borderWarn{position:fixed;inset:0;pointer-events:none;z-index:15;box-shadow:inset 0 0 120px rgba(255,60,40,0);transition:box-shadow .25s}
-#deathScreen{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:35;background:rgba(255,255,255,.5)}
+#deathScreen{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:35;background:rgba(255,255,255,.55)}
 #deathScreen .card{animation:pop .4s}
 @keyframes pop{0%{transform:scale(.7);opacity:0}100%{transform:scale(1);opacity:1}}
-#deathScreen h2{color:#e65100;font-size:34px;margin-bottom:10px}
-#deathInfo{color:#5a7a52;font-size:16px;line-height:2;margin-bottom:6px}
+#deathScreen h2{color:#e65100;font-size:32px;margin-bottom:8px}
+#deathInfo{color:#5a7a52;font-size:15px;line-height:2;margin-bottom:4px}
 #deathInfo b{color:#2e7d32}
-#specHint{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);color:#fff;background:rgba(0,0,0,.35);padding:6px 18px;border-radius:999px;font-size:13px;z-index:25}
+#histList{margin:8px auto 0;font-size:13px;color:#7d9a72;text-align:left;width:max-content;line-height:1.9}
+#histList b{color:#ff8f2e}
+#specHint{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);color:#fff;background:rgba(90,110,80,.5);padding:6px 18px;border-radius:999px;font-size:13px;z-index:25}
 @media (max-width:760px){
-  #scoreCard{font-size:13px;padding:8px 12px}
-  #scoreCard b{font-size:16px}
+  #scoreCard{font-size:12px;padding:7px 11px}
+  #scoreCard b{font-size:15px}
+  #comboTag{top:84px;font-size:15px}
+  #buffBar{top:108px}
+  .chip{font-size:11px;padding:3px 9px}
   #board{min-width:140px;padding:8px 10px}
   #boardList{font-size:12px}
-  #killfeed{top:100px;max-width:52vw}
+  #killfeed{top:96px;max-width:52vw}
+  #killfeed.comboShift{top:140px}
   #minimap{width:104px!important;height:104px!important}
-  .card{padding:26px 22px}
+  .card{padding:22px 18px}
   #boostBtn{width:104px;height:104px;font-size:22px}
+  .skin{width:27px;height:27px}
+  .hudBtn{font-size:12px;padding:5px 11px}
+  #toastBox{top:56px;width:92vw}
+  #topBtns{top:auto;bottom:30px;left:50%;transform:translateX(-50%)}
+  .toast{font-size:13px;padding:7px 16px}
 }
 @media (pointer:fine){#boostBtn{display:none}}
 </style>
@@ -65,29 +96,46 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:"Segoe UI","Microso
 <div id="menu">
   <div class="card">
     <h1>贪吃蛇大作战</h1>
-    <div class="sub">3D 版 · 十六蛇混战 · 吃到就是王</div>
+    <div class="sub">3D 巨蛇修罗场 · 二十蛇混战 · 道具 + 成就 + 连击</div>
     <input id="nameInput" maxlength="8" placeholder="起个响亮的名字" value="无名小蛇">
+    <div class="rowLabel">皮 肤 颜 色</div>
     <div id="skinRow"></div>
+    <div class="rowLabel">皮 肤 花 纹</div>
+    <div id="patRow"></div>
+    <div class="rowLabel">场 上 道 具</div>
+    <div id="buffLegend">
+      <span><i style="background:#ab47bc"></i>磁铁吸食</span>
+      <span><i style="background:#42a5f5"></i>护盾反杀</span>
+      <span><i style="background:#ffca28"></i>免费疾速</span>
+      <span><i style="background:#ec407a"></i>双倍积分</span>
+      <span><i style="background:#90a4ae"></i>幽灵穿身</span>
+    </div>
     <button id="playBtn" class="bigBtn">开 战</button>
     <div class="ctrl-help">
-      电脑：移动鼠标转向，按住左键或空格加速（加速会变短）<br>
-      手机：手指拖动屏幕转向，按「加速」按钮冲刺<br>
-      撞到别人的身体会死，让别人撞你的身体，吃掉它掉落的光点！
+      电脑：移动鼠标转向，按住左键或空格加速（会掉分）｜手机：拖动转向 + 加速按钮<br>
+      吃光点变长，撞别人身体即死，引诱对手撞你；金蛋=大分，快速连吃有连击加成
     </div>
   </div>
 </div>
 <div id="hud" class="hidden">
   <div id="scoreCard">分数 <b id="hudScore">0</b>　长度 <b id="hudLen">0</b><br>排名 <b id="hudRank">-</b>　击杀 <b id="hudKills">0</b></div>
+  <div id="comboTag"></div>
+  <div id="buffBar"></div>
   <div id="board"><h3>蛇 王 榜</h3><ol id="boardList"></ol></div>
   <div id="killfeed"></div>
   <canvas id="minimap" width="150" height="150"></canvas>
-  <button id="muteBtn">音效：开</button>
+  <div id="topBtns">
+    <button id="muteBtn" class="hudBtn">音效：开</button>
+    <button id="qualityBtn" class="hudBtn">画质：高清</button>
+  </div>
   <div id="boostBtn">加速</div>
 </div>
+<div id="toastBox"></div>
 <div id="deathScreen" class="hidden">
   <div class="card">
     <h2>你被终结了！</h2>
     <div id="deathInfo"></div>
+    <div id="histList"></div>
     <button id="respawnBtn" class="bigBtn">再来一局</button>
   </div>
 </div>
@@ -98,18 +146,25 @@ import { GLTFLoader } from './vendor/addons/GLTFLoader.js';
 
 const qs = new URLSearchParams(location.search);
 const AUTO = qs.get('auto') === '1';
-const ARENA_R = 150, FOOD_N = 520, FOOD_CAP = 1150, AI_N = 15, MAX_SEG = 120, TRAIL_N = 640;
+const ARENA_R = 220, FOOD_N = 800, FOOD_CAP = 1700, AI_N = 19, MAX_SEG = 300, TRAIL_N = 1600;
 const BASE_SPEED = 20, BOOST_MULT = 1.75;
 
-const PALETTE = [0xff5252, 0xff9800, 0xffd600, 0x9ccc65, 0x00c853, 0x00bfa5, 0x00b0ff, 0x2979ff, 0x7c4dff, 0xd500f9, 0xff4081, 0xff6d00, 0x00e5ff, 0xaeea00, 0xf06292, 0x8d6e63];
-const CANDY = [0xff8a80, 0xffd180, 0xfff59d, 0xa5d6a7, 0x80deea, 0x90caf9, 0xce93d8, 0xffab91, 0xb39ddb, 0xfff176];
+const PALETTE = [0xef5350, 0xff9800, 0xffd600, 0x9ccc65, 0x00c853, 0x00bfa5, 0x00b0ff, 0x2979ff, 0x7c4dff, 0xd500f9, 0xec407a, 0xff6d00, 0x00e5ff, 0xaeea00, 0xf06292, 0x8d6e63, 0x5c6bc0, 0x26a69a, 0xffa726, 0x66bb6a, 0xef9a9a, 0x80cbc4, 0x9fa8da, 0xb0bec5];
+const CANDY = [0xff8a80, 0xffd180, 0xfff59d, 0xa5d6a7, 0x80deea, 0x90caf9, 0xce93d8, 0xffab91, 0xb39ddb, 0xfff176, 0x80cbc4, 0xf48fb1, 0xffcc80, 0xbcaaa4];
 const AI_NAMES = ['疾风蛇', '蛇皮走位', '小蛇快跑', '贪吃蛇王', '毒牙哥', '盘丝大仙', '闪电蛇', '铁头娃', '卷卷蛇', '大歪歪', '溜溜球', '糖葫芦', '麻花花', '果冻蛇', '飞毛腿', '夜行者', '胆小蛇', '横冲直撞', '歪打正着', '绕圈圈', '吞天蟒', '迷你龙', '辣椒蛇', '糯米团', '弹弹蛇', '追风少年', '胖墩墩', '机灵鬼', '大长虫', '悠悠球', '花斑蟒', '竹叶青', '眼镜王', '小尾巴', '钻山甲', '泥鳅精', '闪电侠', '风一样的蛇', '滚滚球', '吸面侠'];
+const PERSONAS = [
+  { id: 'normal', fleeR: 1.0, preyR: 1.0, boostP: 1.0, huntP: 0.75, w: 0.4 },
+  { id: 'greedy', fleeR: 1.25, preyR: 0.4, boostP: 0.5, huntP: 0.2, w: 0.25 },
+  { id: 'hunter', fleeR: 0.6, preyR: 1.5, boostP: 1.6, huntP: 1.0, w: 0.2 },
+  { id: 'coward', fleeR: 1.7, preyR: 0.15, boostP: 0.8, huntP: 0.05, w: 0.15 }
+];
 
 const rand = (a, b) => a + Math.random() * (b - a);
 const randi = (a, b) => Math.floor(rand(a, b + 1));
 const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
 const TAU = Math.PI * 2;
 function angDiff(a, b) { let d = (b - a) % TAU; if (d > Math.PI) d -= TAU; if (d < -Math.PI) d += TAU; return d; }
+function darker(hex, f) { const c = new THREE.Color(hex); c.multiplyScalar(f); return c.getHex(); }
 
 const $ = id => document.getElementById(id);
 const cvs = $('c3d'), minimapC = $('minimap'), mmx = minimapC.getContext('2d');
@@ -117,21 +172,21 @@ const renderer = new THREE.WebGLRenderer({ canvas: cvs, antialias: true });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.setSize(innerWidth, innerHeight);
 const scene = new THREE.Scene();
-scene.fog = new THREE.Fog(0xdcf2ff, 150, 400);
-const camera = new THREE.PerspectiveCamera(62, innerWidth / innerHeight, 0.1, 900);
+scene.fog = new THREE.Fog(0xf2faff, 200, 560);
+const camera = new THREE.PerspectiveCamera(62, innerWidth / innerHeight, 0.1, 1100);
 addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
 
 (function sky() {
   const c = document.createElement('canvas'); c.width = 2; c.height = 256;
   const g = c.getContext('2d'); const gr = g.createLinearGradient(0, 0, 0, 256);
-  gr.addColorStop(0, '#6fc3ff'); gr.addColorStop(0.55, '#b5e3ff'); gr.addColorStop(1, '#eefaff');
+  gr.addColorStop(0, '#a8d8ff'); gr.addColorStop(0.5, '#d6efff'); gr.addColorStop(1, '#fbfeff');
   g.fillStyle = gr; g.fillRect(0, 0, 2, 256);
   const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
   scene.background = tex;
 })();
-scene.add(new THREE.HemisphereLight(0xffffff, 0xa8d8a0, 1.0));
-const sun = new THREE.DirectionalLight(0xfff3d6, 1.5);
-sun.position.set(70, 110, 40);
+scene.add(new THREE.HemisphereLight(0xffffff, 0xdff0d0, 1.05));
+const sun = new THREE.DirectionalLight(0xfff8e8, 1.4);
+sun.position.set(90, 140, 50);
 scene.add(sun);
 
 function coloredGeo(geo, hex, mat4) {
@@ -157,72 +212,74 @@ function mergeGeos(list) {
   return out;
 }
 const M = new THREE.Matrix4(), Q0 = new THREE.Quaternion(), V3 = new THREE.Vector3(), S3 = new THREE.Vector3(), C1 = new THREE.Color();
+const UP = new THREE.Vector3(0, 1, 0);
 
 (function ground() {
   const c = document.createElement('canvas'); c.width = c.height = 512;
   const g = c.getContext('2d');
-  for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++) { g.fillStyle = (x + y) % 2 ? '#b6e986' : '#a8df77'; g.fillRect(x * 64, y * 64, 64, 64); }
+  for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++) { g.fillStyle = (x + y) % 2 ? '#e9f7d8' : '#def2c8'; g.fillRect(x * 64, y * 64, 64, 64); }
+  g.strokeStyle = 'rgba(255,255,255,0.5)'; g.lineWidth = 2;
+  for (let i = 0; i <= 8; i++) { g.beginPath(); g.moveTo(i * 64, 0); g.lineTo(i * 64, 512); g.stroke(); g.beginPath(); g.moveTo(0, i * 64); g.lineTo(512, i * 64); g.stroke(); }
   const tex = new THREE.CanvasTexture(c);
-  tex.wrapS = tex.wrapT = THREE.RepeatWrapping; tex.repeat.set(26, 26);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping; tex.repeat.set(36, 36);
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
-  const m = new THREE.Mesh(new THREE.CircleGeometry(ARENA_R + 90, 72), new THREE.MeshLambertMaterial({ map: tex }));
+  const m = new THREE.Mesh(new THREE.CircleGeometry(ARENA_R + 110, 72), new THREE.MeshLambertMaterial({ map: tex }));
   m.rotation.x = -Math.PI / 2; scene.add(m);
 })();
 (function boundary() {
-  const torus = new THREE.Mesh(new THREE.TorusGeometry(ARENA_R + 0.4, 0.55, 10, 110), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+  const torus = new THREE.Mesh(new THREE.TorusGeometry(ARENA_R + 0.4, 0.55, 10, 130), new THREE.MeshBasicMaterial({ color: 0xffffff }));
   torus.rotation.x = -Math.PI / 2; torus.position.y = 0.35; scene.add(torus);
-  const wall = new THREE.Mesh(new THREE.CylinderGeometry(ARENA_R, ARENA_R, 2.6, 96, 1, true), new THREE.MeshBasicMaterial({ color: 0xff8a65, transparent: true, opacity: 0.13, side: THREE.DoubleSide, depthWrite: false }));
+  const wall = new THREE.Mesh(new THREE.CylinderGeometry(ARENA_R, ARENA_R, 2.6, 110, 1, true), new THREE.MeshBasicMaterial({ color: 0xffab91, transparent: true, opacity: 0.11, side: THREE.DoubleSide, depthWrite: false }));
   wall.position.y = 1.3; scene.add(wall);
-  const pil = new THREE.InstancedMesh(new THREE.CapsuleGeometry(0.85, 2.4, 6, 14), new THREE.MeshLambertMaterial({ color: 0xffffff }), 20);
-  for (let i = 0; i < 20; i++) {
-    const a = i / 20 * TAU;
+  const pil = new THREE.InstancedMesh(new THREE.CapsuleGeometry(0.85, 2.4, 6, 12), new THREE.MeshLambertMaterial({ color: 0xffffff }), 26);
+  for (let i = 0; i < 26; i++) {
+    const a = i / 26 * TAU;
     M.compose(V3.set(Math.cos(a) * (ARENA_R + 0.4), 1.7, Math.sin(a) * (ARENA_R + 0.4)), Q0.identity(), S3.set(1, 1, 1));
-    pil.setMatrixAt(i, M); pil.setColorAt(i, C1.setHex(i % 2 ? 0xffffff : 0xff8a80));
+    pil.setMatrixAt(i, M); pil.setColorAt(i, C1.setHex(i % 2 ? 0xffffff : 0xffccbf));
   }
   scene.add(pil);
 })();
 (function trees() {
   const parts = [];
-  for (let i = 0; i < 26; i++) {
-    const a = rand(0, TAU), d = rand(ARENA_R + 10, ARENA_R + 58), x = Math.cos(a) * d, z = Math.sin(a) * d;
-    const s = rand(0.8, 1.7), pink = Math.random() < 0.25;
-    const trunk = coloredGeo(new THREE.CylinderGeometry(0.22, 0.34, 1.3, 7), 0x9b6b43, M.identity().makeTranslation(x, 0.6 * s, z).scale(S3.set(s, s, s)));
-    parts.push(trunk);
-    const leaf = pink ? 0xffb7d5 : (Math.random() < 0.5 ? 0x7ed957 : 0x4caf50);
+  for (let i = 0; i < 34; i++) {
+    const a = rand(0, TAU), d = rand(ARENA_R + 12, ARENA_R + 80), x = Math.cos(a) * d, z = Math.sin(a) * d;
+    const s = rand(0.8, 1.8), pink = Math.random() < 0.3;
+    parts.push(coloredGeo(new THREE.CylinderGeometry(0.22, 0.34, 1.3, 6), 0xb98c62, M.identity().makeTranslation(x, 0.6 * s, z).scale(S3.set(s, s, s))));
+    const base = pink ? 0xffc9de : 0x9fdf8a;
     for (let j = 0; j < 3; j++) {
       const r = (1.15 - j * 0.28) * s, y = (1.5 + j * 0.85) * s;
-      parts.push(coloredGeo(new THREE.SphereGeometry(r, 10, 8), j === 0 ? leaf : (pink ? 0xffc9de : leaf), M.identity().makeTranslation(x, y, z)));
+      parts.push(coloredGeo(new THREE.SphereGeometry(r, 9, 7), j === 0 ? base : (pink ? 0xffdff0 : 0xb2e69e), M.identity().makeTranslation(x, y, z)));
     }
   }
   scene.add(new THREE.Mesh(mergeGeos(parts), new THREE.MeshLambertMaterial({ vertexColors: true })));
 })();
 const cloudGroup = new THREE.Group();
 (function clouds() {
-  for (let i = 0; i < 9; i++) {
+  for (let i = 0; i < 11; i++) {
     const parts = [];
     const n = randi(3, 4);
     for (let j = 0; j < n; j++) {
-      const r = rand(2.2, 4.2);
-      parts.push(coloredGeo(new THREE.SphereGeometry(r, 10, 8), 0xffffff, M.identity().makeTranslation((j - n / 2) * r * 1.1, rand(-0.5, 0.5), rand(-1.5, 1.5)).scale(S3.set(1, 0.62, 1))));
+      const r = rand(2.2, 4.4);
+      parts.push(coloredGeo(new THREE.SphereGeometry(r, 9, 7), 0xffffff, M.identity().makeTranslation((j - n / 2) * r * 1.1, rand(-0.5, 0.5), rand(-1.5, 1.5)).scale(S3.set(1, 0.6, 1))));
     }
     const mesh = new THREE.Mesh(mergeGeos(parts), new THREE.MeshLambertMaterial({ vertexColors: true }));
-    const a = rand(0, TAU), d = rand(50, 210);
-    mesh.position.set(Math.cos(a) * d, rand(34, 66), Math.sin(a) * d);
+    const a = rand(0, TAU), d = rand(60, 260);
+    mesh.position.set(Math.cos(a) * d, rand(38, 74), Math.sin(a) * d);
     cloudGroup.add(mesh);
   }
   scene.add(cloudGroup);
 })();
 
 const shadowMesh = new THREE.InstancedMesh(
-  (() => { const g = new THREE.CircleGeometry(1, 22); g.rotateX(-Math.PI / 2); return g; })(),
-  new THREE.MeshBasicMaterial({ color: 0x33691e, transparent: true, opacity: 0.2, depthWrite: false }), 20);
+  (() => { const g = new THREE.CircleGeometry(1, 18); g.rotateX(-Math.PI / 2); return g; })(),
+  new THREE.MeshBasicMaterial({ color: 0x5a8a3a, transparent: true, opacity: 0.16, depthWrite: false }), 24);
 shadowMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
 scene.add(shadowMesh);
 
 const rings = [];
-for (let i = 0; i < 8; i++) {
-  const r = new THREE.Mesh(new THREE.TorusGeometry(1, 0.12, 8, 40), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0 }));
+for (let i = 0; i < 10; i++) {
+  const r = new THREE.Mesh(new THREE.TorusGeometry(1, 0.12, 8, 36), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0 }));
   r.rotation.x = -Math.PI / 2; r.visible = false; scene.add(r);
   rings.push({ mesh: r, life: 0, max: 0.6, size: 8 });
 }
@@ -232,47 +289,104 @@ function popRing(x, z, hex, size) {
   r.mesh.visible = true; r.mesh.position.set(x, 0.5, z); r.mesh.material.color.setHex(hex);
 }
 
+const PN = 240;
+const partMesh = new THREE.InstancedMesh(new THREE.TetrahedronGeometry(0.24), new THREE.MeshBasicMaterial(), PN);
+partMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+partMesh.frustumCulled = false;
+scene.add(partMesh);
+const parts = { x: new Float32Array(PN), y: new Float32Array(PN), z: new Float32Array(PN), vx: new Float32Array(PN), vy: new Float32Array(PN), vz: new Float32Array(PN), life: new Float32Array(PN), max: new Float32Array(PN), sz: new Float32Array(PN) };
+let partCursor = 0;
+for (let i = 0; i < PN; i++) { partMesh.setColorAt(i, C1.setHex(0xffffff)); parts.max[i] = 1; }
+function burst(x, y, z, hex, n, spd, up) {
+  for (let k = 0; k < n; k++) {
+    const i = partCursor; partCursor = (partCursor + 1) % PN;
+    const a = rand(0, TAU), v = rand(0.3, 1) * spd;
+    parts.x[i] = x; parts.y[i] = y; parts.z[i] = z;
+    parts.vx[i] = Math.cos(a) * v; parts.vz[i] = Math.sin(a) * v; parts.vy[i] = rand(0.4, 1) * (up || 5);
+    parts.life[i] = parts.max[i] = rand(0.4, 0.8); parts.sz[i] = rand(0.7, 1.5);
+    partMesh.setColorAt(i, C1.setHex(hex));
+  }
+  if (partMesh.instanceColor) partMesh.instanceColor.needsUpdate = true;
+}
+function updateParts(dt) {
+  for (let i = 0; i < PN; i++) {
+    if (parts.life[i] > 0) {
+      parts.life[i] -= dt;
+      parts.vy[i] -= 14 * dt;
+      parts.x[i] += parts.vx[i] * dt; parts.y[i] += parts.vy[i] * dt; parts.z[i] += parts.vz[i] * dt;
+      if (parts.y[i] < 0.1) parts.y[i] = 0.1;
+      const s = Math.max(parts.sz[i] * parts.life[i] / parts.max[i], 0.001);
+      M.compose(V3.set(parts.x[i], parts.y[i], parts.z[i]), Q0.setFromAxisAngle(UP, parts.life[i] * 9), S3.set(s, s, s));
+    } else M.makeScale(0, 0, 0);
+    partMesh.setMatrixAt(i, M);
+  }
+  partMesh.instanceMatrix.needsUpdate = true;
+}
+
 let audioCtx = null, muted = localStorage.getItem('sss3d_mute') === '1';
 function ac() { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); if (audioCtx.state === 'suspended') audioCtx.resume(); return audioCtx; }
-function beep(f0, f1, dur, type, vol) {
+function beep(f0, f1, dur, type, vol, delay) {
   if (muted) return;
   try {
-    const ctx = ac(), o = ctx.createOscillator(), g = ctx.createGain(), t0 = ctx.currentTime;
+    const ctx = ac(), t0 = ctx.currentTime + (delay || 0);
+    const o = ctx.createOscillator(), g = ctx.createGain();
     o.type = type; o.frequency.setValueAtTime(f0, t0); o.frequency.exponentialRampToValueAtTime(Math.max(f1, 1), t0 + dur);
     g.gain.setValueAtTime(vol, t0); g.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
     o.connect(g); g.connect(ctx.destination); o.start(t0); o.stop(t0 + dur);
   } catch (e) { }
 }
 const sfx = {
-  eat: () => beep(rand(500, 620), 900, 0.07, 'square', 0.045),
-  kill: () => { beep(660, 660, 0.09, 'triangle', 0.12); setTimeout(() => beep(880, 880, 0.12, 'triangle', 0.12), 90); },
+  eat: () => beep(rand(500, 620), 900, 0.06, 'square', 0.04),
+  gold: () => { beep(660, 990, 0.09, 'triangle', 0.09); beep(990, 1320, 0.12, 'triangle', 0.09, 0.09); },
+  kill: () => { beep(660, 660, 0.09, 'triangle', 0.12); beep(880, 880, 0.12, 'triangle', 0.12, 0.09); },
   die: () => beep(300, 70, 0.5, 'sawtooth', 0.16),
-  boost: () => beep(220, 700, 0.14, 'sawtooth', 0.06),
+  boost: () => beep(220, 700, 0.14, 'sawtooth', 0.05),
+  pickup: () => { beep(523, 784, 0.1, 'sine', 0.1); beep(784, 1046, 0.14, 'sine', 0.1, 0.1); },
+  ach: () => { beep(784, 784, 0.1, 'triangle', 0.09); beep(988, 988, 0.1, 'triangle', 0.09, 0.11); beep(1318, 1318, 0.18, 'triangle', 0.1, 0.22); },
   click: () => beep(760, 760, 0.05, 'sine', 0.08)
 };
+const CHORDS = [[262, 330, 392], [220, 262, 330], [175, 220, 262], [196, 247, 294]];
+let chordI = 0, nextChordT = 0;
+function musicTick() {
+  if (muted || phase !== 'play' || gameTime < nextChordT) return;
+  nextChordT = gameTime + 3.6;
+  try {
+    const ctx = ac(), ch = CHORDS[chordI = (chordI + 1) % CHORDS.length];
+    ch.forEach((f, i) => {
+      const t0 = ctx.currentTime + i * 0.02;
+      const o = ctx.createOscillator(), g = ctx.createGain(), fl = ctx.createBiquadFilter();
+      o.type = 'triangle'; o.frequency.value = f;
+      fl.type = 'lowpass'; fl.frequency.value = 900;
+      g.gain.setValueAtTime(0.0001, t0); g.gain.linearRampToValueAtTime(0.014, t0 + 0.7); g.gain.linearRampToValueAtTime(0.0001, t0 + 3.5);
+      o.connect(fl); fl.connect(g); g.connect(ctx.destination); o.start(t0); o.stop(t0 + 3.6);
+    });
+  } catch (e) { }
+}
 
 const FX = new Float32Array(FOOD_CAP), FZ = new Float32Array(FOOD_CAP), FV = new Float32Array(FOOD_CAP), FC = new Uint32Array(FOOD_CAP);
-const FPH = new Float32Array(FOOD_CAP), FR = new Float32Array(FOOD_CAP);
+const FPH = new Float32Array(FOOD_CAP), FR = new Float32Array(FOOD_CAP), FG = new Uint8Array(FOOD_CAP);
 const foodAlive = new Uint8Array(FOOD_CAP), freeSlots = [];
 let foodAliveCount = 0;
 for (let i = FOOD_CAP - 1; i >= FOOD_N; i--) freeSlots.push(i);
-const foodMesh = new THREE.InstancedMesh(new THREE.SphereGeometry(1, 12, 9), new THREE.MeshLambertMaterial({ emissive: 0x666666 }), FOOD_CAP);
+const foodMesh = new THREE.InstancedMesh(new THREE.SphereGeometry(1, 10, 8), new THREE.MeshLambertMaterial({ emissive: 0x777777 }), FOOD_CAP);
 foodMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
 scene.add(foodMesh);
-function spawnFood(x, z, v, hex) {
+function spawnFood(x, z, v, hex, gold) {
   if (!freeSlots.length) return;
   const i = freeSlots.pop();
-  FX[i] = x; FZ[i] = z; FV[i] = v; FC[i] = hex; FPH[i] = rand(0, TAU); FR[i] = 0.3 + v * 0.09;
+  FX[i] = x; FZ[i] = z; FV[i] = v; FC[i] = hex; FG[i] = gold ? 1 : 0; FPH[i] = rand(0, TAU); FR[i] = (gold ? 0.55 : 0.3) + v * 0.08;
   if (!foodAlive[i]) { foodAlive[i] = 1; foodAliveCount++; }
   foodMesh.setColorAt(i, C1.setHex(hex));
   if (foodMesh.instanceColor) foodMesh.instanceColor.needsUpdate = true;
 }
 function killFood(i) { foodAlive[i] = 0; foodAliveCount--; freeSlots.push(i); }
-function randFoodHex() { return CANDY[randi(0, CANDY.length - 1)]; }
 function spawnRandomFood() {
-  const a = rand(0, TAU), d = Math.sqrt(Math.random()) * (ARENA_R - 6);
+  const a = rand(0, TAU), d = Math.sqrt(Math.random()) * (ARENA_R - 8);
   const roll = Math.random();
-  spawnFood(Math.cos(a) * d, Math.sin(a) * d, roll < 0.72 ? 1 : roll < 0.95 ? 2 : 5, randFoodHex());
+  if (roll < 0.015) spawnFood(Math.cos(a) * d, Math.sin(a) * d, 12, 0xffd54f, true);
+  else if (roll < 0.74) spawnFood(Math.cos(a) * d, Math.sin(a) * d, 1, CANDY[randi(0, CANDY.length - 1)]);
+  else if (roll < 0.96) spawnFood(Math.cos(a) * d, Math.sin(a) * d, 2, CANDY[randi(0, CANDY.length - 1)]);
+  else spawnFood(Math.cos(a) * d, Math.sin(a) * d, 5, 0xb39ddb);
 }
 for (let i = 0; i < FOOD_N; i++) spawnRandomFood();
 
@@ -280,7 +394,7 @@ let headProto = null, headReady = false;
 function fallbackHead() {
   const g = new THREE.Group();
   const skin = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.5, name: 'Skin' });
-  const s = new THREE.Mesh(new THREE.SphereGeometry(1, 18, 14), skin); s.scale.set(1.35, 0.9, 1.0); g.add(s);
+  const s = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 12), skin); s.scale.set(1.35, 0.9, 1.0); g.add(s);
   return g;
 }
 new GLTFLoader().load('assets/snake_head.glb',
@@ -295,7 +409,7 @@ class Trail {
   at(k) { const i = ((this.head - k) % TRAIL_N + TRAIL_N) % TRAIL_N; return [this.x[i], this.z[i]]; }
 }
 
-const bodyGeo = new THREE.SphereGeometry(1, 18, 13);
+const bodyGeo = new THREE.SphereGeometry(1, 10, 8);
 function makeLabel(name) {
   const c = document.createElement('canvas'); c.width = 256; c.height = 72;
   const g = c.getContext('2d');
@@ -308,36 +422,199 @@ function makeLabel(name) {
   return sp;
 }
 
+function buffIconTexture(kind) {
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const g = c.getContext('2d');
+  g.lineWidth = 10; g.lineCap = 'round'; g.lineJoin = 'round';
+  if (kind === 'magnet') {
+    g.strokeStyle = '#ab47bc'; g.beginPath(); g.arc(64, 58, 30, Math.PI, 0); g.stroke();
+    g.strokeStyle = '#e1a5ee'; g.beginPath(); g.moveTo(34, 58); g.lineTo(34, 84); g.moveTo(94, 58); g.lineTo(94, 84); g.stroke();
+  } else if (kind === 'shield') {
+    g.fillStyle = '#42a5f5'; g.beginPath();
+    g.moveTo(64, 22); g.lineTo(98, 36); g.lineTo(98, 70); g.quadraticCurveTo(98, 96, 64, 108);
+    g.quadraticCurveTo(30, 96, 30, 70); g.lineTo(30, 36); g.closePath(); g.fill();
+    g.fillStyle = '#fff'; g.beginPath(); g.moveTo(50, 66); g.lineTo(60, 78); g.lineTo(82, 50); g.lineWidth = 9; g.strokeStyle = '#fff'; g.stroke();
+  } else if (kind === 'swift') {
+    g.fillStyle = '#ffca28'; g.beginPath();
+    g.moveTo(74, 18); g.lineTo(42, 66); g.lineTo(62, 66); g.lineTo(52, 110); g.lineTo(90, 56); g.lineTo(68, 56); g.closePath(); g.fill();
+  } else if (kind === 'double') {
+    g.fillStyle = '#ec407a'; g.font = 'bold 72px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('×2', 64, 66);
+  } else {
+    g.fillStyle = '#90a4ae'; g.beginPath(); g.arc(64, 56, 32, Math.PI, 0);
+    g.lineTo(96, 96); g.lineTo(82, 86); g.lineTo(70, 98); g.lineTo(58, 86); g.lineTo(46, 98); g.lineTo(32, 86); g.closePath(); g.fill();
+    g.fillStyle = '#fff'; g.beginPath(); g.arc(52, 54, 6, 0, TAU); g.arc(78, 54, 6, 0, TAU); g.fill();
+  }
+  const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
+const BUFF_DEFS = {
+  magnet: { hex: 0xab47bc, name: '磁铁', dur: 9 },
+  shield: { hex: 0x42a5f5, name: '护盾', dur: 6 },
+  swift: { hex: 0xffca28, name: '疾速', dur: 7 },
+  double: { hex: 0xec407a, name: '双倍', dur: 12 },
+  ghost: { hex: 0x90a4ae, name: '幽灵', dur: 6 }
+};
+const BUFF_KEYS = Object.keys(BUFF_DEFS);
+const buffs = [];
+const buffPool = [];
+for (let i = 0; i < 5; i++) {
+  const grp = new THREE.Group();
+  const core = new THREE.Mesh(new THREE.SphereGeometry(0.95, 14, 11), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.85 }));
+  const icon = new THREE.Sprite(new THREE.SpriteMaterial({ depthWrite: false }));
+  icon.scale.set(1.9, 1.9, 1); icon.position.y = 1.9;
+  const base = new THREE.Mesh((() => { const g = new THREE.TorusGeometry(1.25, 0.09, 6, 28); g.rotateX(-Math.PI / 2); return g; })(), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.5 }));
+  grp.add(core); grp.add(icon); grp.add(base); grp.visible = false;
+  scene.add(grp);
+  buffPool.push(grp);
+}
+function spawnBuff(kind, x, z) {
+  if (buffs.length >= 5) return;
+  const b = { kind, x, z, life: 25, ph: rand(0, TAU), mesh: buffPool[buffs.length % buffPool.length] };
+  b.mesh.visible = true;
+  b.mesh.children[1].material.map = buffIconTexture(kind);
+  b.mesh.children[1].material.needsUpdate = true;
+  b.mesh.children[0].material.color.setHex(BUFF_DEFS[kind].hex);
+  b.mesh.children[2].material.color.setHex(BUFF_DEFS[kind].hex);
+  buffs.push(b);
+}
+let buffSpawnT = 4;
+function updateBuffs(dt) {
+  buffSpawnT -= dt;
+  if (buffSpawnT <= 0) {
+    buffSpawnT = rand(7, 12);
+    if (buffs.length < 5) {
+      const [x, z] = safeSpot(8);
+      spawnBuff(BUFF_KEYS[randi(0, BUFF_KEYS.length - 1)], x, z);
+    }
+  }
+  for (let i = buffs.length - 1; i >= 0; i--) {
+    const b = buffs[i];
+    b.life -= dt;
+    if (b.life <= 0) { b.mesh.visible = false; buffs.splice(i, 1); continue; }
+    const blink = b.life < 6 ? (Math.floor(b.life * 5) % 2 === 0) : true;
+    b.mesh.visible = blink;
+    const bob = 1.15 + Math.sin(gameTime * 2.2 + b.ph) * 0.22;
+    b.mesh.position.set(b.x, bob, b.z);
+    b.mesh.children[1].position.y = 1.9 + Math.sin(gameTime * 2.2 + b.ph) * 0.18;
+    b.mesh.rotation.y += dt * 1.2;
+    for (const s of snakes) {
+      if (!s.alive) continue;
+      const rr = s.r * 1.6 + 1.2;
+      if (dist2(s.x, s.z, b.x, b.z) < rr * rr) {
+        grantBuff(s, b.kind);
+        burst(b.x, 1.2, b.z, BUFF_DEFS[b.kind].hex, 10, 6, 7);
+        popRing(b.x, b.z, BUFF_DEFS[b.kind].hex, 4);
+        b.mesh.visible = false;
+        buffs.splice(i, 1);
+        break;
+      }
+    }
+  }
+}
+function grantBuff(s, kind) {
+  const def = BUFF_DEFS[kind];
+  s[kind + 'T'] = def.dur;
+  if (s.isPlayer) {
+    sfx.pickup();
+    addFeed(`获得道具：${def.name}`, def.hex);
+    s.buffSet.add(kind);
+    if (s.buffSet.size >= 5) unlockAch('all5');
+  }
+}
+
 const snakes = [];
 let player = null, phase = 'menu', gameTime = 0, shake = 0;
 const respawnQueue = [];
 let usedColors = new Set(), usedNames = new Set();
 
-function radiusOf(score) { return Math.min(0.52 + Math.pow(Math.max(score, 1), 0.46) * 0.028, 1.35); }
-function segCountOf(score) { return Math.min(6 + Math.floor(Math.pow(Math.max(score, 1), 0.62) * 0.75), MAX_SEG); }
+function radiusOf(score) { return Math.min(0.52 + Math.pow(Math.max(score, 1), 0.46) * 0.03, 1.68); }
+function segCountOf(score) { return Math.min(6 + Math.floor(Math.pow(Math.max(score, 1), 0.68) * 0.9), MAX_SEG); }
+
+const ACH_DEFS = [
+  { id: 'k1', name: '初次击杀', desc: '完成第 1 次击杀', chk: p => p.kills >= 1 },
+  { id: 'k3', name: '三杀蛇神', desc: '单局完成 3 次击杀', chk: p => p.kills >= 3 },
+  { id: 'k6', name: '杀戮机器', desc: '单局完成 6 次击杀', chk: p => p.kills >= 6 },
+  { id: 's100', name: '百分蛇', desc: '单局分数达到 100', chk: p => p.score >= 100 },
+  { id: 's500', name: '蛇中豪杰', desc: '单局分数达到 500', chk: p => p.score >= 500 },
+  { id: 's1500', name: '万分瞩目', desc: '单局分数达到 1500', chk: p => p.score >= 1500 },
+  { id: 'l50', name: '长身玉立', desc: '长度达到 50 节', chk: p => p.segs >= 50 },
+  { id: 'l150', name: '蛇界巨蟒', desc: '长度达到 150 节', chk: p => p.segs >= 150 },
+  { id: 'l280', name:'遮天巨蟒', desc: '长度达到 280 节', chk: p => p.segs >= 280 },
+  { id: 'r3', name: '前三甲', desc: '登上排行榜前三', chk: (p, r) => r <= 3 && p.score > 60 },
+  { id: 'r1', name: '蛇王登基', desc: '登顶排行榜第一', chk: (p, r) => r === 1 && p.score > 100 },
+  { id: 'all5', name: '集齐五宝', desc: '单局吃齐 5 种道具', chk: p => p.buffSet.size >= 5 },
+  { id: 't120', name: '活得精彩', desc: '单局存活 120 秒', chk: p => p.lifeTime >= 120 },
+  { id: 'b60', name: '极速狂蛇', desc: '累计加速 60 秒', chk: p => p.boostTotal >= 60 }
+];
+let achUnlocked = new Set(JSON.parse(localStorage.getItem('sss3d_ach') || '[]'));
+function unlockAch(id) {
+  if (achUnlocked.has(id)) return;
+  const def = ACH_DEFS.find(a => a.id === id);
+  if (!def) return;
+  achUnlocked.add(id);
+  localStorage.setItem('sss3d_ach', JSON.stringify([...achUnlocked]));
+  addToast(`成就解锁：${def.name}`, def.desc);
+  sfx.ach();
+}
+function addToast(text, sub) {
+  const box = $('toastBox');
+  const d = document.createElement('div');
+  d.className = 'toast';
+  d.innerHTML = text + (sub ? `<small>${sub}</small>` : '');
+  box.appendChild(d);
+  while (box.children.length > 3) box.firstChild.remove();
+  setTimeout(() => d.remove(), 4100);
+}
 
 class Snake {
-  constructor(name, hex, isPlayer) {
-    this.name = name; this.hex = hex; this.isPlayer = isPlayer;
+  constructor(name, hex, isPlayer, pattern) {
+    this.name = name; this.hex = hex; this.isPlayer = isPlayer; this.pattern = pattern || 1;
     this.alive = true; this.score = 10; this.kills = 0; this.deaths = 0;
     this.x = 0; this.z = 0; this.a = rand(0, TAU); this.targetA = this.a;
-    this.boost = false; this.wander = rand(0, TAU); this.thinkT = rand(0, 0.15);
+    this.wantBoost = false; this.boost = false;
+    this.wander = rand(0, TAU); this.thinkT = rand(0, 0.15);
     this.dropT = 0; this.turnVel = 0; this.prevA = this.a; this.deadT = 0;
-    this.trail = new Trail();
     this.shield = isPlayer ? 2.5 : 1.0;
+    this.magnetT = 0; this.shieldT = 0; this.swiftT = 0; this.doubleT = 0; this.ghostT = 0;
+    this.buffSet = new Set();
+    this.lifeTime = 0; this.boostTotal = 0;
+    this.combo = 0; this.comboT = 0;
+    this.killTimes = [];
+    this.persona = PERSONAS[randi(0, PERSONAS.length - 1)];
+    this.trail = new Trail();
     this.sx = new Float32Array(MAX_SEG); this.sz = new Float32Array(MAX_SEG);
-    this.segs = segCountOf(this.score); this.r = radiusOf(this.score); this.spacing = this.r * 0.58;
-    const mat = new THREE.MeshLambertMaterial({ color: 0xffffff });
+    this.segs = segCountOf(this.score); this.r = radiusOf(this.score); this.spacing = this.r * 0.55;
+    const mat = new THREE.MeshLambertMaterial({ color: 0xffffff, transparent: true });
     this.body = new THREE.InstancedMesh(bodyGeo, mat, MAX_SEG);
     this.body.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     this.body.frustumCulled = false;
-    for (let i = 0; i < MAX_SEG; i++) this.body.setColorAt(i, C1.setHex(i % 4 < 2 ? hex : ((hex >> 1) & 0x7f7f7f)));
+    this.paintBody();
     scene.add(this.body);
     this.headGroup = new THREE.Group();
     this.inner = null;
     this.label = null;
+    const shieldRing = new THREE.Mesh(new THREE.TorusGeometry(1.45, 0.09, 6, 26), new THREE.MeshBasicMaterial({ color: 0x64b5f6, transparent: true, opacity: 0.85 }));
+    shieldRing.rotation.x = Math.PI / 2; shieldRing.visible = false;
+    this.shieldRing = shieldRing;
+    this.headGroup.add(shieldRing);
+    const magRing = new THREE.Mesh(new THREE.TorusGeometry(4.6, 0.07, 6, 40), new THREE.MeshBasicMaterial({ color: 0xce93d8, transparent: true, opacity: 0.4 }));
+    magRing.rotation.x = Math.PI / 2; magRing.visible = false;
+    this.magRing = magRing;
+    this.headGroup.add(magRing);
     this.headGroup.visible = false;
     scene.add(this.headGroup);
+  }
+  paintBody() {
+    const hex = this.hex, n = MAX_SEG;
+    for (let i = 0; i < n; i++) {
+      let c = C1.setHex(hex);
+      if (this.pattern === 1) { if (i % 4 >= 2) c.setHex(darker(hex, 0.62)); }
+      else if (this.pattern === 2) { c.setHex(hex).offsetHSL(0, 0, -0.28 * (i / n)); }
+      else if (this.pattern === 3) { c.setHSL((i * 9 / 360) % 1, 0.72, 0.58); }
+      this.body.setColorAt(i, c);
+    }
+    if (this.body.instanceColor) this.body.instanceColor.needsUpdate = true;
   }
   attachHead() {
     if (!headReady || this.inner) return;
@@ -350,60 +627,82 @@ class Snake {
   spawnAt(x, z) {
     this.x = x; this.z = z; this.a = this.targetA = Math.atan2(-z, -x) + rand(-0.5, 0.5);
     this.trail.clear(x, z);
-    for (let k = 1; k < 30; k++) this.trail.push(x - Math.cos(this.a) * k * 0.5, z - Math.sin(this.a) * k * 0.5);
-    this.alive = true; this.boost = false;
+    for (let k = 1; k < 40; k++) this.trail.push(x - Math.cos(this.a) * k * 0.5, z - Math.sin(this.a) * k * 0.5);
+    this.alive = true; this.wantBoost = this.boost = false;
     this.shield = this.isPlayer ? 2.5 : 1.0;
   }
   updateDerived() {
-    const ns = segCountOf(this.score);
+    const target = segCountOf(this.score);
+    if (this.segs < target) this.segs = Math.min(target, this.segs + Math.max(1.5, (target - this.segs) * 3 * lastDt));
+    else this.segs = target;
     this.r = radiusOf(this.score);
-    this.spacing = this.r * 0.58;
-    this.segs = ns;
+    this.spacing = this.r * 0.55;
   }
   move(dt) {
-    const sp = BASE_SPEED * (this.boost && this.score > 25 ? BOOST_MULT : 1);
-    let maxTurn = 3.8;
+    this.lifeTime += dt;
+    const swift = this.swiftT > 0;
+    const want = this.wantBoost;
+    const boosting = want && (swift || this.score > 25);
+    this.boost = boosting;
+    if (boosting) {
+      this.boostTotal += dt;
+      if (!swift) this.score -= dt * 9;
+      this.dropT -= dt;
+      if (this.dropT <= 0) {
+        this.dropT = 0.16;
+        const t = this.trail.at(Math.min(this.trail.count - 1, Math.floor(this.segs * this.spacing / 0.42)));
+        spawnFood(t[0] + rand(-0.8, 0.8), t[1] + rand(-0.8, 0.8), 1, this.hex);
+      }
+    }
+    const sp = BASE_SPEED * (boosting ? BOOST_MULT : 1);
+    const maxTurn = clamp(4.2 - (this.r - 0.5) * 0.95, 2.4, 4.2);
     const d = angDiff(this.a, this.targetA);
-    const ta = clamp(d, -maxTurn * dt, maxTurn * dt);
-    this.a += ta;
+    this.a += clamp(d, -maxTurn * dt, maxTurn * dt);
     if (this.a > Math.PI) this.a -= TAU; if (this.a < -Math.PI) this.a += TAU;
     this.x += Math.cos(this.a) * sp * dt;
     this.z += Math.sin(this.a) * sp * dt;
-    if (this.boost && this.score > 25) {
-      this.score -= dt * 9;
-      this.dropT -= dt;
-      if (this.dropT <= 0) { this.dropT = 0.16; const t = this.trail.at(Math.min(this.trail.count - 1, Math.floor(this.segs * this.spacing / 0.42))); spawnFood(t[0] + rand(-0.8, 0.8), t[1] + rand(-0.8, 0.8), 1, this.hex); }
-    }
     this.updateDerived();
     const last = this.trail.at(0);
     const dx = this.x - last[0], dz = this.z - last[1];
-    if (dx * dx + dz * dz >= 0.18) this.trail.push(this.x, this.z);
+    if (dx * dx + dz * dz >= 0.09) this.trail.push(this.x, this.z);
     this.sampleSegs();
+    this.magnetT = Math.max(0, this.magnetT - dt);
+    this.shieldT = Math.max(0, this.shieldT - dt);
+    this.swiftT = Math.max(0, this.swiftT - dt);
+    this.doubleT = Math.max(0, this.doubleT - dt);
+    this.ghostT = Math.max(0, this.ghostT - dt);
+    if (this.comboT > 0) { this.comboT -= dt; if (this.comboT <= 0) this.combo = 0; }
     return sp;
   }
   sampleSegs() {
-    let acc = 0, k = 0;
-    let [px, pz] = [this.x, this.z];
-    for (let i = 0; i < this.segs; i++) {
-      const target = (i + 0.7) * this.spacing;
-      while (acc < target && k < this.trail.count - 1) {
-        const [qx, qz] = this.trail.at(k + 1);
-        const d = Math.hypot(px - qx, pz - qz);
-        if (acc + d >= target) {
-          const f = (target - acc) / (d || 1);
-          this.sx[i] = px + (qx - px) * f; this.sz[i] = pz + (qz - pz) * f;
-          acc = target; break;
-        }
-        acc += d; px = qx; pz = qz; k++;
+    const T = this.trail, n = this.segs, sp = this.spacing;
+    let i = 0, acc = 0, k = 0;
+    let bx = this.x, bz = this.z;
+    const kMax = T.count - 1;
+    while (i < n && k < kMax) {
+      const idx = ((T.head - k - 1) % TRAIL_N + TRAIL_N) % TRAIL_N;
+      const qx = T.x[idx], qz = T.z[idx];
+      const d = Math.hypot(bx - qx, bz - qz);
+      while (i < n && acc + d >= (i + 0.7) * sp) {
+        const target = (i + 0.7) * sp;
+        const f = (target - acc) / (d || 1);
+        this.sx[i] = bx + (qx - bx) * f;
+        this.sz[i] = bz + (qz - bz) * f;
+        i++;
       }
-      if (acc < target) { this.sx[i] = px; this.sz[i] = pz; }
+      acc += d; bx = qx; bz = qz; k++;
     }
+    while (i < n) { this.sx[i] = bx; this.sz[i] = bz; i++; }
   }
-  syncMeshes(dt, speed) {
-    const boosting = this.boost && this.score > 25;
+  syncMeshes(dt) {
+    const boosting = this.boost;
     this.headGroup.visible = this.alive && (this.shield <= 0 || Math.floor(gameTime * 8) % 2 === 0);
     this.body.visible = this.alive;
     if (!this.alive) return;
+    const ghost = this.ghostT > 0;
+    const opT = ghost ? 0.42 : 1;
+    const m = this.body.material;
+    m.opacity += (opT - m.opacity) * Math.min(1, dt * 8);
     const h = this.headGroup;
     h.position.set(this.x, this.r * 0.95, this.z);
     h.rotation.y = -this.a;
@@ -416,6 +715,14 @@ class Snake {
       });
       if (this.label) this.label.position.y = 2.6 / (this.r * 1.32);
     }
+    this.shieldRing.visible = this.shieldT > 0 || this.shield > 0;
+    if (this.shieldRing.visible) {
+      const pulse = 1 + Math.sin(gameTime * 6) * 0.08;
+      this.shieldRing.scale.setScalar(pulse);
+      this.shieldRing.material.opacity = this.shieldT > 0 ? 0.9 : 0.4;
+    }
+    this.magRing.visible = this.magnetT > 0;
+    if (this.magRing.visible) this.magRing.rotation.z += dt * 2;
     for (let i = 0; i < this.segs; i++) {
       const taper = i > this.segs - 9 ? 1 - (i - (this.segs - 9)) / 9 * 0.68 : 1;
       const s = this.r * (i < 2 ? 1.04 : 1) * taper;
@@ -430,20 +737,31 @@ class Snake {
     this.alive = false; this.deaths++; this.deadT = gameTime;
     const n = Math.floor(this.segs / 2);
     for (let i = 0; i < n; i++) {
-      const a = rand(0, TAU), d = rand(0, 1.6);
-      spawnFood(this.sx[i * 2] + Math.cos(a) * d, this.sz[i * 2] + Math.sin(a) * d, clamp(1.6 + this.score * 0.007, 1.5, 6), this.hex);
+      const a = rand(0, TAU), d = rand(0, 1.8);
+      spawnFood(this.sx[i * 2] + Math.cos(a) * d, this.sz[i * 2] + Math.sin(a) * d, clamp(1.6 + this.score * 0.008, 1.5, 8), this.hex);
     }
-    popRing(this.x, this.z, this.hex, 7 + this.r * 5);
-    if (killer && killer.alive) { killer.kills++; killer.score += 8; }
+    popRing(this.x, this.z, this.hex, 8 + this.r * 5);
+    burst(this.x, 1.2, this.z, this.hex, 14, 8, 8);
+    if (killer && killer.alive) {
+      killer.kills++;
+      killer.score += 10;
+      killer.killTimes.push(gameTime);
+      killer.killTimes = killer.killTimes.filter(t => gameTime - t <= 4);
+      if (killer.isPlayer) {
+        sfx.kill(); shake = 0.5;
+        if (killer.killTimes.length === 2) addToast('双杀！', '4 秒内终结两条蛇');
+        if (killer.killTimes.length >= 3) addToast('多重击杀！', '势不可挡');
+      }
+    }
     if (this.isPlayer) {
       sfx.die(); shake = 0.7;
       onPlayerDeath(killer);
-    } else if (player && player.alive && dist2(this.x, this.z, player.x, player.z) < 90 * 90) sfx.kill();
+    } else if (player && player.alive && dist2(this.x, this.z, player.x, player.z) < 100 * 100) sfx.kill();
     addFeed(this.isPlayer ? `${this.name} 被终结了` : killer ? `${killer.name} 终结了 ${this.name}` : `${this.name} 撞墙了`, this.hex);
   }
   destroy() {
     scene.remove(this.body); scene.remove(this.headGroup);
-    this.body.dispose(); 
+    this.body.dispose();
     const i = snakes.indexOf(this); if (i >= 0) snakes.splice(i, 1);
   }
 }
@@ -466,37 +784,40 @@ function safeSpot(minClear) {
     let ok = true;
     for (const s of snakes) {
       if (!s.alive) continue;
-      if (dist2(x, z, s.x, s.z) < 30 * 30) { ok = false; break; }
+      if (dist2(x, z, s.x, s.z) < 34 * 34) { ok = false; break; }
       for (let i = 0; i < s.segs; i += 2) if (dist2(x, z, s.sx[i], s.sz[i]) < minClear * minClear) { ok = false; break; }
       if (!ok) break;
     }
     if (ok) return [x, z];
   }
-  return [rand(-40, 40), rand(-40, 40)];
+  return [rand(-60, 60), rand(-60, 60)];
 }
-function pickColor() { const free = PALETTE.filter(c => !usedColors.has(c)); const c = free.length ? free[randi(0, free.length - 1)] : PALETTE[randi(0, PALETTE.length - 1)]; return c; }
-function pickName() { const free = AI_NAMES.filter(n => !usedNames.has(n)); const n = free.length ? free[randi(0, free.length - 1)] : '野生蛇' + randi(10, 99); return n; }
+function pickColor() { const free = PALETTE.filter(c => !usedColors.has(c)); return free.length ? free[randi(0, free.length - 1)] : PALETTE[randi(0, PALETTE.length - 1)]; }
+function pickName() { const free = AI_NAMES.filter(n => !usedNames.has(n)); return free.length ? free[randi(0, free.length - 1)] : '野生蛇' + randi(10, 99); }
 
 function probeHit(s, ang, dist) {
   const px = s.x + Math.cos(ang) * dist, pz = s.z + Math.sin(ang) * dist;
   if (px * px + pz * pz > (ARENA_R - 3) * (ARENA_R - 3)) return true;
   for (const o of snakes) {
-    if (o === s || !o.alive) continue;
+    if (o === s || !o.alive || o.ghostT > 0) continue;
+    const bh = Math.hypot(o.x - s.x, o.z - s.z);
+    if (bh > o.segs * o.spacing + dist + 4) continue;
     const rr = (o.r + s.r * 0.85) * (o.r + s.r * 0.85);
     for (let i = 0; i < o.segs; i += 2) if (dist2(px, pz, o.sx[i], o.sz[i]) < rr) return true;
   }
   return false;
 }
 function aiThink(s) {
+  const P = s.persona;
   const dc = Math.hypot(s.x, s.z);
-  s.boost = false;
-  if (dc > ARENA_R - 30) {
+  s.wantBoost = false;
+  if (dc > ARENA_R - 34) {
     const toC = Math.atan2(-s.z, -s.x);
-    if (dc > ARENA_R - 12) s.targetA = toC + rand(-0.3, 0.3);
+    if (dc > ARENA_R - 14) s.targetA = toC + rand(-0.3, 0.3);
     else s.targetA = s.targetA + clamp(angDiff(s.targetA, toC), -1.2, 1.2) * 0.5;
   }
-  const ahead = s.a, d1 = BASE_SPEED * 0.55, d2 = BASE_SPEED * 1.05;
-  if (probeHit(s, ahead, d1) || probeHit(s, ahead, d2) || probeHit(s, ahead + angDiff(ahead, s.targetA) * 0.5, d2)) {
+  const d1 = BASE_SPEED * 0.55, d2 = BASE_SPEED * 1.05;
+  if (probeHit(s, s.a, d1) || probeHit(s, s.a, d2)) {
     const l1 = !probeHit(s, s.a + 0.55, d2), r1 = !probeHit(s, s.a - 0.55, d2);
     if (l1 && !r1) s.targetA = s.a + 0.9;
     else if (r1 && !l1) s.targetA = s.a - 0.9;
@@ -505,54 +826,64 @@ function aiThink(s) {
     return;
   }
   let flee = null, fleeD = 1e9;
+  const fleeR = (20 + s.r * 5) * P.fleeR;
   for (const o of snakes) {
-    if (o === s || !o.alive) continue;
+    if (o === s || !o.alive || o.ghostT > 0) continue;
     const d = Math.hypot(o.x - s.x, o.z - s.z);
-    if (d < 20 + o.r * 5 && o.score > s.score * 1.15) {
+    if (d < fleeR && o.score > s.score * 1.15 && o.shieldT <= 0) {
       const toMe = Math.atan2(s.z - o.z, s.x - o.x);
       if (Math.abs(angDiff(o.a, toMe)) < 1.0 && d < fleeD) { flee = o; fleeD = d; }
     }
   }
   if (flee) {
     s.targetA = Math.atan2(s.z - flee.z, s.x - flee.x);
-    s.boost = fleeD < 12 && s.score > 30;
+    if (fleeD < 13 && (s.score > 30 || s.swiftT > 0)) s.wantBoost = true;
     return;
   }
   let prey = null, preyD = 1e9;
-  for (const o of snakes) {
-    if (o === s || !o.alive) continue;
-    if (o.score < s.score * 0.7) {
-      const d = Math.hypot(o.x - s.x, o.z - s.z);
-      if (d < 26 && d < preyD) { prey = o; preyD = d; }
+  const preyR = 26 * P.preyR;
+  if (preyR > 6) {
+    for (const o of snakes) {
+      if (o === s || !o.alive) continue;
+      if (o.score < s.score * 0.7) {
+        const d = Math.hypot(o.x - s.x, o.z - s.z);
+        if (d < preyR && d < preyD) { prey = o; preyD = d; }
+      }
     }
   }
-  if (prey && s.score > 45 && Math.random() < 0.75) {
-    const px = prey.x + Math.cos(prey.a) * prey.score * 0.06 + Math.cos(prey.a) * 4;
-    const pz = prey.z + Math.sin(prey.a) * prey.score * 0.06 + Math.sin(prey.a) * 4;
+  if (prey && s.score > 45 && Math.random() < P.huntP) {
+    const lead = 3.5 + prey.score * 0.05;
+    const px = prey.x + Math.cos(prey.a) * lead, pz = prey.z + Math.sin(prey.a) * lead;
     s.targetA = Math.atan2(pz - s.z, px - s.x);
-    s.boost = preyD < 15 && s.score > 60;
+    if (preyD < 16 && (s.score > 60 || s.swiftT > 0)) s.wantBoost = true;
     return;
   }
-  let best = -1, bestScore = 0, bi = -1;
-  for (let t = 0; t < 42; t++) {
+  let bestScore = 0, bi = -1;
+  for (let t = 0; t < 60; t++) {
     const i = randi(0, FOOD_CAP - 1);
     if (!foodAlive[i]) continue;
     const d = Math.hypot(FX[i] - s.x, FZ[i] - s.z);
-    const v = FV[i] / (14 + d);
+    const v = (FV[i] * (FG[i] ? 2.2 : 1)) / (14 + d);
     if (v > bestScore) { bestScore = v; bi = i; }
   }
   if (bi >= 0) {
     s.targetA = Math.atan2(FZ[bi] - s.z, FX[bi] - s.x);
-    if (bestScore > 0.02 && Math.random() < 0.01 && s.score > 40) s.boost = true;
+    if ((bestScore > 0.02 && Math.random() < 0.012 * P.boostP && s.score > 40) || (s.swiftT > 0 && bestScore > 0.01)) s.wantBoost = true;
   } else {
     s.wander += rand(-0.6, 0.6);
     s.targetA = s.wander;
+  }
+  for (const b of buffs) {
+    const d = Math.hypot(b.x - s.x, b.z - s.z);
+    if (d < 30) { s.targetA = Math.atan2(b.z - s.z, b.x - s.x); break; }
   }
 }
 
 function eatFoods(s) {
   const er = s.r * 1.2 + 0.6, er2 = er * er;
-  const mr = 3.4 + s.r * 1.6, mr2 = mr * mr;
+  const magnet = s.magnetT > 0;
+  const mr = magnet ? 26 : 3.4 + s.r * 1.6, mr2 = mr * mr;
+  const mult = (s.doubleT > 0 ? 2 : 1);
   for (let i = 0; i < FOOD_CAP; i++) {
     if (!foodAlive[i]) continue;
     const dx = s.x - FX[i], dz = s.z - FZ[i];
@@ -560,11 +891,18 @@ function eatFoods(s) {
     if (d2 > mr2) continue;
     if (d2 < er2) {
       killFood(i);
-      s.score += FV[i];
+      if (s.comboT > 0) s.combo++; else s.combo = 1;
+      s.comboT = 2;
+      const comboMult = 1 + Math.min(s.combo, 20) * 0.05;
+      const gain = FV[i] * mult * comboMult;
+      s.score += gain;
       s.updateDerived();
-      if (s.isPlayer) sfx.eat();
+      if (s.isPlayer) {
+        if (FG[i]) { sfx.gold(); burst(FX[i], 0.8, FZ[i], 0xffd54f, 6, 4, 6); }
+        else { sfx.eat(); burst(FX[i], 0.8, FZ[i], FC[i], 2, 3, 5); }
+      }
     } else {
-      const pull = Math.min(1, 9 * lastDt);
+      const pull = Math.min(1, (magnet ? 16 : 9) * lastDt);
       FX[i] += dx * pull; FZ[i] += dz * pull;
     }
   }
@@ -575,21 +913,38 @@ function collisions() {
   for (const A of snakes) {
     if (!A.alive) continue;
     if (A.x * A.x + A.z * A.z > (ARENA_R - A.r * 0.4) * (ARENA_R - A.r * 0.4)) { A.die(null); continue; }
-    if (A.shield > 0) continue;
-    for (const B of snakes) {
-      if (B === A || !B.alive) continue;
-      const hh = (A.r + B.r) * 0.72;
-      if (dist2(A.x, A.z, B.x, B.z) < hh * hh) {
-        if (A.score <= B.score + 0.5) A.die(B);
-        break;
+    if (A.shield <= 0 && A.shieldT <= 0 && A.ghostT <= 0) {
+      for (const B of snakes) {
+        if (B === A || !B.alive || B.ghostT > 0) continue;
+        const reach = B.segs * B.spacing + 8;
+        if (dist2(A.x, A.z, B.x, B.z) > reach * reach) continue;
+        const hh = (A.r + B.r) * 0.72;
+        if (dist2(A.x, A.z, B.x, B.z) < hh * hh) {
+          if (B.shieldT > 0) { A.die(B); }
+          else if (A.score <= B.score + 0.5) A.die(B);
+          break;
+        }
+        const rr = (B.r * 0.92 + A.r * 0.5) * (B.r * 0.92 + A.r * 0.5);
+        let hit = false;
+        for (let i = 0; i < B.segs; i++) {
+          const dx = A.x - B.sx[i], dz = A.z - B.sz[i];
+          if (dx * dx + dz * dz < rr) { hit = true; break; }
+        }
+        if (hit) { A.die(B); break; }
       }
-      const rr = (B.r * 0.92 + A.r * 0.5) * (B.r * 0.92 + A.r * 0.5);
-      let hit = false;
-      for (let i = 0; i < B.segs; i++) {
-        const dx = A.x - B.sx[i], dz = A.z - B.sz[i];
-        if (dx * dx + dz * dz < rr) { hit = true; break; }
+    } else if (A.shieldT > 0 && A.ghostT <= 0) {
+      for (const B of snakes) {
+        if (B === A || !B.alive || B.ghostT > 0 || B.shieldT > 0) continue;
+        const reach = B.segs * B.spacing + 8;
+        if (dist2(A.x, A.z, B.x, B.z) > reach * reach) continue;
+        const hh = (A.r + B.r) * 0.72;
+        if (dist2(A.x, A.z, B.x, B.z) < hh * hh) { B.die(A); continue; }
+        const rr = (B.r * 0.92 + A.r * 0.5) * (B.r * 0.92 + A.r * 0.5);
+        for (let i = 0; i < B.segs; i++) {
+          const dx = A.x - B.sx[i], dz = A.z - B.sz[i];
+          if (dx * dx + dz * dz < rr) { B.die(A); break; }
+        }
       }
-      if (hit) { A.die(B); break; }
     }
   }
 }
@@ -610,39 +965,80 @@ function rankOf(s) {
   for (const o of snakes) if (o !== s && o.alive && o.score > s.score) r++;
   return r;
 }
+const buffBar = $('buffBar');
 let hudT = 0;
 function updateHUD(dt) {
   hudT -= dt;
   if (hudT > 0) return;
   hudT = 0.15;
   const alive = snakes.filter(s => s.alive).sort((a, b) => b.score - a.score);
+  let rank = 99;
   if (player) {
+    rank = rankOf(player);
     $('hudScore').textContent = Math.floor(player.score);
     $('hudLen').textContent = player.segs;
     $('hudKills').textContent = player.kills;
-    $('hudRank').textContent = player.alive ? '#' + rankOf(player) : '-';
+    $('hudRank').textContent = player.alive ? '#' + rank : '-';
+    if (player.alive) {
+      const sc = player.score;
+      if (sc >= 100) unlockAch('s100');
+      if (sc >= 500) unlockAch('s500');
+      if (sc >= 1500) unlockAch('s1500');
+      if (player.segs >= 50) unlockAch('l50');
+      if (player.segs >= 150) unlockAch('l150');
+      if (player.segs >= 280) unlockAch('l280');
+      if (rank <= 3 && sc > 60) unlockAch('r3');
+      if (rank === 1 && sc > 100) unlockAch('r1');
+      if (player.lifeTime >= 120) unlockAch('t120');
+      if (player.boostTotal >= 60) unlockAch('b60');
+      if (player.kills >= 1) unlockAch('k1');
+      if (player.kills >= 3) unlockAch('k3');
+      if (player.kills >= 6) unlockAch('k6');
+    }
   }
   let html = '';
   alive.slice(0, 8).forEach((s, i) => {
     html += `<li class="${s.isPlayer ? 'me' : ''}"><span class="rk">${i + 1}</span><span>${s.name}</span><span>${Math.floor(s.score)}</span></li>`;
   });
-  if (player && player.alive && rankOf(player) > 8) {
-    html += `<li class="me"><span class="rk">${rankOf(player)}</span><span>${player.name}</span><span>${Math.floor(player.score)}</span></li>`;
+  if (player && player.alive && rank > 8) {
+    html += `<li class="me"><span class="rk">${rank}</span><span>${player.name}</span><span>${Math.floor(player.score)}</span></li>`;
   }
   boardList.innerHTML = html;
+  const combo = $('comboTag');
+  if (player && player.alive && player.combo >= 3) {
+    combo.textContent = `连击 ×${player.combo}`;
+    combo.classList.add('show');
+    feedBox.classList.add('comboShift');
+  } else {
+    combo.classList.remove('show');
+    feedBox.classList.remove('comboShift');
+  }
+  if (player && player.alive) {
+    let chips = '';
+    for (const k of BUFF_KEYS) {
+      const t = player[k + 'T'];
+      if (t > 0) chips += `<div class="chip"><i style="background:#${new THREE.Color(BUFF_DEFS[k].hex).getHexString()}"></i>${BUFF_DEFS[k].name}<small>${t.toFixed(0)}s</small></div>`;
+    }
+    buffBar.innerHTML = chips;
+  } else buffBar.innerHTML = '';
 }
 
 function drawMinimap() {
   const W = minimapC.width, cx = W / 2, k = (W / 2 - 5) / ARENA_R;
   mmx.clearRect(0, 0, W, W);
-  mmx.fillStyle = 'rgba(255,255,255,0.72)';
+  mmx.fillStyle = 'rgba(255,255,255,0.78)';
   mmx.beginPath(); mmx.arc(cx, cx, W / 2 - 3, 0, TAU); mmx.fill();
-  mmx.strokeStyle = '#ff8a65'; mmx.lineWidth = 2;
+  mmx.strokeStyle = '#ffab91'; mmx.lineWidth = 2;
   mmx.beginPath(); mmx.arc(cx, cx, ARENA_R * k, 0, TAU); mmx.stroke();
+  for (const b of buffs) {
+    mmx.fillStyle = '#' + new THREE.Color(BUFF_DEFS[b.kind].hex).getHexString();
+    mmx.beginPath(); mmx.arc(cx + b.x * k, cx + b.z * k, 3.4, 0, TAU); mmx.fill();
+    mmx.strokeStyle = '#fff'; mmx.lineWidth = 1.4; mmx.stroke();
+  }
   for (const s of snakes) {
     if (!s.alive) continue;
     mmx.fillStyle = '#' + new THREE.Color(s.hex).getHexString();
-    mmx.beginPath(); mmx.arc(cx + s.x * k, cx + s.z * k, s.isPlayer ? 4.5 : 3, 0, TAU); mmx.fill();
+    mmx.beginPath(); mmx.arc(cx + s.x * k, cx + s.z * k, s.isPlayer ? 4.5 : 2.6, 0, TAU); mmx.fill();
     if (s.isPlayer) { mmx.strokeStyle = '#fff'; mmx.lineWidth = 2; mmx.stroke(); }
   }
 }
@@ -678,6 +1074,7 @@ function steerPlayer(s) {
   if (dx * dx + dy * dy < 100) return;
   const rel = Math.atan2(dx, -dy);
   s.targetA = s.a + rel;
+  s.wantBoost = input.mouseDown || input.keyBoost;
 }
 
 const camState = { pos: new THREE.Vector3(0, 60, 90), look: new THREE.Vector3() };
@@ -689,8 +1086,8 @@ function updateCamera(dt) {
     target = best;
   }
   if (phase === 'menu' || !target) {
-    const a = gameTime * 0.07;
-    camState.pos.lerp(V3.set(Math.cos(a) * 95, 62, Math.sin(a) * 95), Math.min(1, dt * 2));
+    const a = gameTime * 0.06;
+    camState.pos.lerp(V3.set(Math.cos(a) * 130, 80, Math.sin(a) * 130), Math.min(1, dt * 2));
     camState.look.lerp(V3.set(0, 0, 0), Math.min(1, dt * 2));
   } else {
     const dir = V3.set(Math.cos(target.a), 0, Math.sin(target.a));
@@ -706,18 +1103,28 @@ function updateCamera(dt) {
     shake = Math.max(0, shake - dt * 1.6);
   }
   camera.lookAt(camState.look);
-  const wantFov = player && player.alive && player.boost && player.score > 25 ? 67 : 62;
+  const wantFov = player && player.alive && player.boost ? 67 : 62;
   camera.fov += (wantFov - camera.fov) * Math.min(1, dt * 4);
   camera.updateProjectionMatrix();
 }
 
 let bestScore = +(localStorage.getItem('sss3d_best') || 0);
+function loadHist() { try { return JSON.parse(localStorage.getItem('sss3d_hist') || '[]'); } catch (e) { return []; } }
 function onPlayerDeath(killer) {
   phase = 'dead';
-  if (Math.floor(player.score) > bestScore) { bestScore = Math.floor(player.score); localStorage.setItem('sss3d_best', bestScore); }
+  const sc = Math.floor(player.score);
+  if (sc > bestScore) { bestScore = sc; localStorage.setItem('sss3d_best', bestScore); }
+  const hist = loadHist();
+  hist.push({ s: sc, l: player.segs, k: player.kills, d: new Date().toLocaleDateString('zh-CN') });
+  hist.sort((a, b) => b.s - a.s);
+  localStorage.setItem('sss3d_hist', JSON.stringify(hist.slice(0, 5)));
   setTimeout(() => {
     if (phase !== 'dead') return;
-    $('deathInfo').innerHTML = `本局分数 <b>${Math.floor(player.score)}</b> · 长度 <b>${player.segs}</b> · 击杀 <b>${player.kills}</b><br>历史最佳 <b>${bestScore}</b>${killer ? `<br>被 <b style="color:#${new THREE.Color(killer.hex).getHexString()}">${killer.name}</b> 终结` : '撞上了世界边界'}`;
+    const killerTxt = killer ? `被 <b style="color:#${new THREE.Color(killer.hex).getHexString()}">${killer.name}</b> 终结` : '撞上了世界边界';
+    $('deathInfo').innerHTML = `本局分数 <b>${sc}</b> · 长度 <b>${player.segs}</b> · 击杀 <b>${player.kills}</b><br>历史最佳 <b>${bestScore}</b>　${killerTxt}<br>存活 ${Math.floor(player.lifeTime)} 秒 · 成就累计 ${achUnlocked.size}/${ACH_DEFS.length}`;
+    let h = '';
+    loadHist().forEach((r, i) => { h += `${i + 1}. <b>${r.s}分</b> · ${r.l}节 · ${r.k}杀 · ${r.d}<br>`; });
+    $('histList').innerHTML = h;
     $('deathScreen').classList.remove('hidden');
     $('specHint').classList.remove('hidden');
     if (AUTO) setTimeout(() => respawnPlayer(), 1800);
@@ -726,21 +1133,22 @@ function onPlayerDeath(killer) {
 function respawnPlayer() {
   $('deathScreen').classList.add('hidden');
   $('specHint').classList.add('hidden');
-  startRun(playerName, playerHex);
+  startRun(playerName, playerHex, playerPattern);
 }
 
-let playerName = '无名小蛇', playerHex = PALETTE[0];
-function startRun(name, hex) {
-  playerName = name; playerHex = hex;
+let playerName = '无名小蛇', playerHex = PALETTE[0], playerPattern = 1;
+function startRun(name, hex, pattern) {
+  playerName = name; playerHex = hex; playerPattern = pattern === undefined ? playerPattern : pattern;
   if (player) { usedColors.delete(player.hex); usedNames.delete(player.name); player.destroy(); }
-  const [x, z] = safeSpot(14);
-  player = new Snake(name, hex, true);
+  const [x, z] = safeSpot(16);
+  player = new Snake(name, hex, true, playerPattern);
   usedColors.add(hex); usedNames.add(name);
   snakes.push(player);
   player.attachHead();
   player.score = 10;
   player.spawnAt(x, z);
   phase = 'play';
+  nextChordT = 0;
   $('menu').classList.add('hidden');
   $('hud').classList.remove('hidden');
   camState.pos.set(x - Math.cos(player.a) * 20, 20, z - Math.sin(player.a) * 20);
@@ -748,12 +1156,12 @@ function startRun(name, hex) {
 
 function spawnAI() {
   const hex = pickColor(), name = pickName();
-  const s = new Snake(name, hex, false);
+  const s = new Snake(name, hex, false, randi(1, 3));
   usedColors.add(hex); usedNames.add(name);
   const [x, z] = safeSpot(12);
   snakes.push(s);
   s.attachHead();
-  s.score = rand(5, 45);
+  s.score = rand(5, 60);
   s.spawnAt(x, z);
   return s;
 }
@@ -763,6 +1171,7 @@ function update(dt) {
   lastDt = dt;
   gameTime += dt;
   cloudGroup.rotation.y += dt * 0.004;
+  musicTick();
   for (const r of rings) {
     if (r.life > 0) {
       r.life -= dt;
@@ -772,6 +1181,7 @@ function update(dt) {
       if (r.life <= 0) r.mesh.visible = false;
     }
   }
+  updateBuffs(dt);
   for (const s of snakes) {
     if (!s.alive) continue;
     s.shield = Math.max(0, s.shield - dt);
@@ -780,7 +1190,6 @@ function update(dt) {
       if (s.thinkT <= 0) { s.thinkT = 0.13 + rand(0, 0.05); aiThink(s); }
     } else {
       steerPlayer(s);
-      s.boost = input.mouseDown || input.keyBoost;
     }
     s.prevA = s.a;
     s.move(dt);
@@ -791,7 +1200,7 @@ function update(dt) {
   for (let i = snakes.length - 1; i >= 0; i--) {
     const s = snakes[i];
     if (!s.alive && !s.isPlayer) {
-      if (gameTime - s.deadT > 0.1) { usedColors.delete(s.hex); usedNames.delete(s.name); s.destroy(); respawnQueue.push(gameTime + rand(1.2, 2.8)); }
+      if (gameTime - s.deadT > 0.1) { usedColors.delete(s.hex); usedNames.delete(s.name); s.destroy(); respawnQueue.push(gameTime + rand(1.5, 3)); }
     }
   }
   for (let i = respawnQueue.length - 1; i >= 0; i--) {
@@ -813,28 +1222,38 @@ function update(dt) {
   shadowMesh.instanceMatrix.needsUpdate = true;
   for (let i = 0; i < FOOD_CAP; i++) {
     if (foodAlive[i]) {
-      const bob = 0.42 + Math.sin(gameTime * 2.4 + FPH[i]) * 0.13;
+      const gold = FG[i];
+      const bob = (gold ? 0.62 : 0.42) + Math.sin(gameTime * 2.4 + FPH[i]) * 0.13;
       const sc = FR[i] * (1 + Math.sin(gameTime * 3.1 + FPH[i]) * 0.08);
       M.compose(V3.set(FX[i], bob, FZ[i]), Q0.identity(), S3.set(sc, sc, sc));
     } else M.makeScale(0, 0, 0);
     foodMesh.setMatrixAt(i, M);
   }
   foodMesh.instanceMatrix.needsUpdate = true;
-  for (const s of snakes) s.syncMeshes(dt, BASE_SPEED);
+  updateParts(dt);
+  for (const s of snakes) s.syncMeshes(dt);
   updateHUD(dt);
   drawMinimap();
   const warn = $('borderWarn');
   if (player && player.alive) {
     const dc = Math.hypot(player.x, player.z);
-    const t = clamp((dc - (ARENA_R - 14)) / 14, 0, 1);
+    const t = clamp((dc - (ARENA_R - 18)) / 18, 0, 1);
     warn.style.boxShadow = `inset 0 0 130px rgba(255,64,40,${t * 0.55})`;
   } else warn.style.boxShadow = 'inset 0 0 130px rgba(255,64,40,0)';
+}
+
+const QUALS = [[2, '高清'], [1.5, '均衡'], [1, '流畅']];
+let qualI = +(localStorage.getItem('sss3d_qual') || 0);
+function applyQual() {
+  renderer.setPixelRatio(Math.min(devicePixelRatio, QUALS[qualI][0]));
+  localStorage.setItem('sss3d_qual', qualI);
+  $('qualityBtn').textContent = '画质：' + QUALS[qualI][1];
 }
 
 let last = performance.now(), fpsAcc = 0, fpsN = 0, lowT = 0;
 function frame(now) {
   requestAnimationFrame(frame);
-  let dt = clamp((now - last) / 1000, 0, 0.05);
+  const dt = clamp((now - last) / 1000, 0, 0.05);
   last = now;
   update(dt);
   updateCamera(dt);
@@ -843,30 +1262,43 @@ function frame(now) {
   if (fpsAcc > 2) {
     const fps = fpsN / fpsAcc;
     fpsAcc = 0; fpsN = 0;
-    if (fps < 42) { lowT++; if (lowT >= 2 && renderer.getPixelRatio() > 1) { renderer.setPixelRatio(1); lowT = 0; } }
+    if (fps < 40) { lowT++; if (lowT >= 2 && qualI < 2) { qualI++; applyQual(); lowT = 0; } }
     else lowT = 0;
   }
 }
 
 const menu = $('menu'), nameInput = $('nameInput'), playBtn = $('playBtn');
-(function buildSkinRow() {
+(function buildMenus() {
   const row = $('skinRow');
   PALETTE.forEach((hex, i) => {
     const d = document.createElement('div');
-    d.className = 'skin' + (i === 0 ? ' sel' : '');
+    d.className = 'skin' + (i === 6 ? ' sel' : '');
     d.style.background = '#' + new THREE.Color(hex).getHexString();
     d.onclick = () => { document.querySelectorAll('.skin').forEach(e => e.classList.remove('sel')); d.classList.add('sel'); playerHex = hex; sfx.click(); };
     row.appendChild(d);
   });
+  const pr = $('patRow');
+  [['纯色', 0], ['环纹', 1], ['渐变', 2], ['彩虹', 3]].forEach(([label, v], i) => {
+    const b = document.createElement('button');
+    b.className = 'pat' + (i === 1 ? ' sel' : '');
+    b.textContent = label;
+    b.onclick = () => { document.querySelectorAll('.pat').forEach(e => e.classList.remove('sel')); b.classList.add('sel'); playerPattern = v; sfx.click(); };
+    pr.appendChild(b);
+  });
+  const savedName = localStorage.getItem('sss3d_name');
+  if (savedName) nameInput.value = savedName;
 })();
 $('muteBtn').textContent = muted ? '音效：关' : '音效：开';
 $('muteBtn').onclick = () => { muted = !muted; localStorage.setItem('sss3d_mute', muted ? '1' : '0'); $('muteBtn').textContent = muted ? '音效：关' : '音效：开'; if (!muted) sfx.click(); };
+applyQual();
+$('qualityBtn').onclick = () => { qualI = (qualI + 1) % 3; applyQual(); sfx.click(); };
 playBtn.onclick = () => {
   if (!headReady) return;
   ac(); sfx.click();
   const nm = (nameInput.value.trim() || '无名小蛇').slice(0, 8);
+  localStorage.setItem('sss3d_name', nm);
   $('deathScreen').classList.add('hidden');
-  startRun(nm, playerHex);
+  startRun(nm, playerHex, playerPattern);
 };
 $('respawnBtn').onclick = () => { sfx.click(); respawnPlayer(); };
 
@@ -874,7 +1306,7 @@ function onAssetsReady() {
   for (const s of snakes) s.attachHead();
   playBtn.textContent = '开 战';
   playBtn.style.opacity = 1;
-  if (AUTO) startRun('测试蛇', PALETTE[randi(0, 15)]);
+  if (AUTO) startRun('测试蛇', PALETTE[randi(0, 23)], 1);
 }
 playBtn.textContent = '加载中…';
 playBtn.style.opacity = 0.6;
@@ -882,19 +1314,42 @@ for (let i = 0; i < AI_N; i++) spawnAI();
 
 window.__game = {
   get snakes() { return snakes; }, get player() { return player; }, get phase() { return phase; }, get time() { return gameTime; },
-  get foodAliveCount() { return foodAliveCount; },
-  start: (n, c) => startRun(n || '测试蛇', c || PALETTE[0]),
+  get foodAliveCount() { return foodAliveCount; }, get buffs() { return buffs; },
+  start: (n, c, p) => startRun(n || '测试蛇', c || PALETTE[0], p),
+  coil() {
+    if (!player || !player.alive) return 'no player';
+    player.score = 3000;
+    player.segs = segCountOf(player.score);
+    player.updateDerived();
+    player.trail.clear(player.x, player.z);
+    const n = 720, turns = 1.7, R = 58, dir = player.a;
+    for (let k = 1; k <= n; k++) {
+      const t = k / n * Math.PI * 2 * turns;
+      const ang = dir + Math.PI + t;
+      const d = t * R / (Math.PI * 2 * turns);
+      player.trail.push(player.x + Math.cos(ang) * d, player.z + Math.sin(ang) * d);
+    }
+    player.a = player.targetA = dir;
+    return { segs: player.segs, trail: player.trail.count };
+  },
+  give(kind) { if (player && player.alive) grantBuff(player, kind); return player ? { [kind + 'T']: player[kind + 'T'] } : null; },
+  achList() { return [...achUnlocked]; },
+  bench(n) {
+    const t0 = performance.now();
+    for (let i = 0; i < n; i++) update(1 / 60);
+    return (performance.now() - t0) / n;
+  },
   stats() {
     const alive = snakes.filter(s => s.alive).sort((a, b) => b.score - a.score);
     return {
       t: Math.floor(gameTime), phase, alive: alive.length,
       top: alive.slice(0, 5).map(s => ({ n: s.name, s: Math.floor(s.score), k: s.kills })),
-      player: player ? { s: Math.floor(player.score), k: player.kills, alive: player.alive, segs: player.segs } : null,
-      foods: foodAliveCount
+      player: player ? { s: Math.floor(player.score), k: player.kills, alive: player.alive, segs: player.segs, combo: player.combo, buffs: BUFF_KEYS.filter(k => player[k + 'T'] > 0) } : null,
+      foods: foodAliveCount, buffsOn: buffs.length
     };
   }
 };
-if (AUTO) { muted = true; }
+if (AUTO) muted = true;
 
 requestAnimationFrame(frame);
 
