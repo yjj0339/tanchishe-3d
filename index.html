@@ -1,0 +1,903 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>贪吃蛇大作战 3D · 十六蛇混战</title>
+<link rel="icon" href="data:,">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{width:100%;height:100%;overflow:hidden;font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;touch-action:none;user-select:none;-webkit-user-select:none}
+#c3d{position:fixed;inset:0;display:block}
+.hidden{display:none!important}
+#menu{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:30;background:radial-gradient(ellipse at 50% 30%,rgba(255,255,255,.35),rgba(255,255,255,.75))}
+.card{background:rgba(255,255,255,.92);border-radius:28px;box-shadow:0 18px 60px rgba(60,120,60,.25);padding:34px 44px;text-align:center;max-width:min(92vw,460px)}
+#menu h1{font-size:clamp(34px,7vw,52px);background:linear-gradient(90deg,#ff8a3d,#22b14c,#00a2ff);-webkit-background-clip:text;background-clip:text;color:transparent;letter-spacing:4px;font-weight:900}
+#menu .sub{color:#7aa06a;font-size:15px;margin:6px 0 22px;letter-spacing:2px}
+#nameInput{width:100%;padding:12px 16px;font-size:18px;border:2px solid #cfe8c0;border-radius:14px;outline:none;text-align:center;color:#3a5a33;background:#f7fff2}
+#nameInput:focus{border-color:#7cc95e}
+#skinRow{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin:18px 0 6px}
+.skin{width:34px;height:34px;border-radius:50%;border:3px solid transparent;cursor:pointer;transition:transform .12s}
+.skin.sel{border-color:#3a5a33;transform:scale(1.22)}
+.bigBtn{margin-top:20px;padding:14px 58px;font-size:22px;font-weight:800;letter-spacing:6px;color:#fff;background:linear-gradient(180deg,#7ed957,#3cb043);border:none;border-radius:999px;cursor:pointer;box-shadow:0 6px 0 #2e8b30,0 12px 24px rgba(60,180,60,.4)}
+.bigBtn:active{transform:translateY(4px);box-shadow:0 2px 0 #2e8b30}
+.ctrl-help{margin-top:20px;color:#8aa884;font-size:13px;line-height:1.9}
+#hud{position:fixed;inset:0;pointer-events:none;z-index:20}
+#scoreCard{position:absolute;top:12px;left:12px;background:rgba(255,255,255,.88);border-radius:16px;padding:10px 16px;font-size:15px;color:#4a6b42;box-shadow:0 4px 14px rgba(60,120,60,.2);line-height:1.7}
+#scoreCard b{font-size:19px;color:#2e7d32}
+#board{position:absolute;top:12px;right:12px;background:rgba(255,255,255,.88);border-radius:16px;padding:10px 14px;min-width:168px;box-shadow:0 4px 14px rgba(60,120,60,.2)}
+#board h3{font-size:13px;color:#7aa06a;margin-bottom:6px;letter-spacing:2px;text-align:center}
+#boardList{list-style:none;font-size:13px;color:#4a6b42}
+#boardList li{display:flex;justify-content:space-between;gap:10px;padding:2px 0}
+#boardList li.me{color:#e65100;font-weight:800}
+#boardList .rk{width:20px}
+#killfeed{position:absolute;top:118px;left:12px;display:flex;flex-direction:column;gap:5px;align-items:flex-start;max-width:46vw}
+.feedItem{background:rgba(255,255,255,.85);color:#5a7a52;font-size:12px;padding:4px 10px;border-radius:999px;animation:fadeout 6s forwards}
+@keyframes fadeout{0%{opacity:0;transform:translateX(-20px)}8%{opacity:1;transform:none}80%{opacity:1}100%{opacity:0}}
+#minimap{position:absolute;bottom:14px;left:14px;border-radius:50%;box-shadow:0 4px 14px rgba(60,120,60,.25);background:rgba(255,255,255,.75)}
+#boostBtn{position:absolute;bottom:26px;right:22px;width:88px;height:88px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#ffb35c,#ff7a1a);color:#fff;font-size:19px;font-weight:900;letter-spacing:2px;display:flex;align-items:center;justify-content:center;box-shadow:0 6px 0 #d45f00,0 10px 20px rgba(255,140,30,.45);pointer-events:auto}
+#boostBtn.on{transform:scale(.92);filter:brightness(1.15)}
+#muteBtn{position:absolute;top:12px;left:50%;transform:translateX(-50%);background:rgba(255,255,255,.85);color:#5a7a52;border:none;font-size:13px;padding:6px 14px;border-radius:999px;pointer-events:auto;cursor:pointer;box-shadow:0 3px 10px rgba(60,120,60,.2)}
+#borderWarn{position:fixed;inset:0;pointer-events:none;z-index:15;box-shadow:inset 0 0 120px rgba(255,60,40,0);transition:box-shadow .25s}
+#deathScreen{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:35;background:rgba(255,255,255,.5)}
+#deathScreen .card{animation:pop .4s}
+@keyframes pop{0%{transform:scale(.7);opacity:0}100%{transform:scale(1);opacity:1}}
+#deathScreen h2{color:#e65100;font-size:34px;margin-bottom:10px}
+#deathInfo{color:#5a7a52;font-size:16px;line-height:2;margin-bottom:6px}
+#deathInfo b{color:#2e7d32}
+#specHint{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);color:#fff;background:rgba(0,0,0,.35);padding:6px 18px;border-radius:999px;font-size:13px;z-index:25}
+@media (max-width:760px){
+  #scoreCard{font-size:13px;padding:8px 12px}
+  #scoreCard b{font-size:16px}
+  #board{min-width:140px;padding:8px 10px}
+  #boardList{font-size:12px}
+  #killfeed{top:100px;max-width:52vw}
+  #minimap{width:104px!important;height:104px!important}
+  .card{padding:26px 22px}
+  #boostBtn{width:104px;height:104px;font-size:22px}
+}
+@media (pointer:fine){#boostBtn{display:none}}
+</style>
+</head>
+<body>
+<canvas id="c3d"></canvas>
+<div id="borderWarn"></div>
+<div id="menu">
+  <div class="card">
+    <h1>贪吃蛇大作战</h1>
+    <div class="sub">3D 版 · 十六蛇混战 · 吃到就是王</div>
+    <input id="nameInput" maxlength="8" placeholder="起个响亮的名字" value="无名小蛇">
+    <div id="skinRow"></div>
+    <button id="playBtn" class="bigBtn">开 战</button>
+    <div class="ctrl-help">
+      电脑：移动鼠标转向，按住左键或空格加速（加速会变短）<br>
+      手机：手指拖动屏幕转向，按「加速」按钮冲刺<br>
+      撞到别人的身体会死，让别人撞你的身体，吃掉它掉落的光点！
+    </div>
+  </div>
+</div>
+<div id="hud" class="hidden">
+  <div id="scoreCard">分数 <b id="hudScore">0</b>　长度 <b id="hudLen">0</b><br>排名 <b id="hudRank">-</b>　击杀 <b id="hudKills">0</b></div>
+  <div id="board"><h3>蛇 王 榜</h3><ol id="boardList"></ol></div>
+  <div id="killfeed"></div>
+  <canvas id="minimap" width="150" height="150"></canvas>
+  <button id="muteBtn">音效：开</button>
+  <div id="boostBtn">加速</div>
+</div>
+<div id="deathScreen" class="hidden">
+  <div class="card">
+    <h2>你被终结了！</h2>
+    <div id="deathInfo"></div>
+    <button id="respawnBtn" class="bigBtn">再来一局</button>
+  </div>
+</div>
+<div id="specHint" class="hidden">观战中……点「再来一局」重返战场</div>
+<script type="module">
+import * as THREE from './vendor/three.module.js';
+import { GLTFLoader } from './vendor/addons/GLTFLoader.js';
+
+const qs = new URLSearchParams(location.search);
+const AUTO = qs.get('auto') === '1';
+const ARENA_R = 150, FOOD_N = 520, FOOD_CAP = 1150, AI_N = 15, MAX_SEG = 120, TRAIL_N = 640;
+const BASE_SPEED = 20, BOOST_MULT = 1.75;
+
+const PALETTE = [0xff5252, 0xff9800, 0xffd600, 0x9ccc65, 0x00c853, 0x00bfa5, 0x00b0ff, 0x2979ff, 0x7c4dff, 0xd500f9, 0xff4081, 0xff6d00, 0x00e5ff, 0xaeea00, 0xf06292, 0x8d6e63];
+const CANDY = [0xff8a80, 0xffd180, 0xfff59d, 0xa5d6a7, 0x80deea, 0x90caf9, 0xce93d8, 0xffab91, 0xb39ddb, 0xfff176];
+const AI_NAMES = ['疾风蛇', '蛇皮走位', '小蛇快跑', '贪吃蛇王', '毒牙哥', '盘丝大仙', '闪电蛇', '铁头娃', '卷卷蛇', '大歪歪', '溜溜球', '糖葫芦', '麻花花', '果冻蛇', '飞毛腿', '夜行者', '胆小蛇', '横冲直撞', '歪打正着', '绕圈圈', '吞天蟒', '迷你龙', '辣椒蛇', '糯米团', '弹弹蛇', '追风少年', '胖墩墩', '机灵鬼', '大长虫', '悠悠球', '花斑蟒', '竹叶青', '眼镜王', '小尾巴', '钻山甲', '泥鳅精', '闪电侠', '风一样的蛇', '滚滚球', '吸面侠'];
+
+const rand = (a, b) => a + Math.random() * (b - a);
+const randi = (a, b) => Math.floor(rand(a, b + 1));
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+const TAU = Math.PI * 2;
+function angDiff(a, b) { let d = (b - a) % TAU; if (d > Math.PI) d -= TAU; if (d < -Math.PI) d += TAU; return d; }
+
+const $ = id => document.getElementById(id);
+const cvs = $('c3d'), minimapC = $('minimap'), mmx = minimapC.getContext('2d');
+const renderer = new THREE.WebGLRenderer({ canvas: cvs, antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+const scene = new THREE.Scene();
+scene.fog = new THREE.Fog(0xdcf2ff, 150, 400);
+const camera = new THREE.PerspectiveCamera(62, innerWidth / innerHeight, 0.1, 900);
+addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
+
+(function sky() {
+  const c = document.createElement('canvas'); c.width = 2; c.height = 256;
+  const g = c.getContext('2d'); const gr = g.createLinearGradient(0, 0, 0, 256);
+  gr.addColorStop(0, '#6fc3ff'); gr.addColorStop(0.55, '#b5e3ff'); gr.addColorStop(1, '#eefaff');
+  g.fillStyle = gr; g.fillRect(0, 0, 2, 256);
+  const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
+  scene.background = tex;
+})();
+scene.add(new THREE.HemisphereLight(0xffffff, 0xa8d8a0, 1.0));
+const sun = new THREE.DirectionalLight(0xfff3d6, 1.5);
+sun.position.set(70, 110, 40);
+scene.add(sun);
+
+function coloredGeo(geo, hex, mat4) {
+  const g = geo.toNonIndexed();
+  if (mat4) g.applyMatrix4(mat4);
+  const n = g.attributes.position.count, arr = new Float32Array(n * 3), c = new THREE.Color(hex);
+  for (let i = 0; i < n; i++) { arr[i * 3] = c.r; arr[i * 3 + 1] = c.g; arr[i * 3 + 2] = c.b; }
+  g.setAttribute('color', new THREE.BufferAttribute(arr, 3));
+  return g;
+}
+function mergeGeos(list) {
+  let pc = 0; for (const g of list) pc += g.attributes.position.count;
+  const pos = new Float32Array(pc * 3), nor = new Float32Array(pc * 3), col = new Float32Array(pc * 3);
+  let o = 0;
+  for (const g of list) {
+    pos.set(g.attributes.position.array, o); nor.set(g.attributes.normal.array, o); col.set(g.attributes.color.array, o);
+    o += g.attributes.position.count * 3;
+  }
+  const out = new THREE.BufferGeometry();
+  out.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  out.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
+  out.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  return out;
+}
+const M = new THREE.Matrix4(), Q0 = new THREE.Quaternion(), V3 = new THREE.Vector3(), S3 = new THREE.Vector3(), C1 = new THREE.Color();
+
+(function ground() {
+  const c = document.createElement('canvas'); c.width = c.height = 512;
+  const g = c.getContext('2d');
+  for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++) { g.fillStyle = (x + y) % 2 ? '#b6e986' : '#a8df77'; g.fillRect(x * 64, y * 64, 64, 64); }
+  const tex = new THREE.CanvasTexture(c);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping; tex.repeat.set(26, 26);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+  const m = new THREE.Mesh(new THREE.CircleGeometry(ARENA_R + 90, 72), new THREE.MeshLambertMaterial({ map: tex }));
+  m.rotation.x = -Math.PI / 2; scene.add(m);
+})();
+(function boundary() {
+  const torus = new THREE.Mesh(new THREE.TorusGeometry(ARENA_R + 0.4, 0.55, 10, 110), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+  torus.rotation.x = -Math.PI / 2; torus.position.y = 0.35; scene.add(torus);
+  const wall = new THREE.Mesh(new THREE.CylinderGeometry(ARENA_R, ARENA_R, 2.6, 96, 1, true), new THREE.MeshBasicMaterial({ color: 0xff8a65, transparent: true, opacity: 0.13, side: THREE.DoubleSide, depthWrite: false }));
+  wall.position.y = 1.3; scene.add(wall);
+  const pil = new THREE.InstancedMesh(new THREE.CapsuleGeometry(0.85, 2.4, 6, 14), new THREE.MeshLambertMaterial({ color: 0xffffff }), 20);
+  for (let i = 0; i < 20; i++) {
+    const a = i / 20 * TAU;
+    M.compose(V3.set(Math.cos(a) * (ARENA_R + 0.4), 1.7, Math.sin(a) * (ARENA_R + 0.4)), Q0.identity(), S3.set(1, 1, 1));
+    pil.setMatrixAt(i, M); pil.setColorAt(i, C1.setHex(i % 2 ? 0xffffff : 0xff8a80));
+  }
+  scene.add(pil);
+})();
+(function trees() {
+  const parts = [];
+  for (let i = 0; i < 26; i++) {
+    const a = rand(0, TAU), d = rand(ARENA_R + 10, ARENA_R + 58), x = Math.cos(a) * d, z = Math.sin(a) * d;
+    const s = rand(0.8, 1.7), pink = Math.random() < 0.25;
+    const trunk = coloredGeo(new THREE.CylinderGeometry(0.22, 0.34, 1.3, 7), 0x9b6b43, M.identity().makeTranslation(x, 0.6 * s, z).scale(S3.set(s, s, s)));
+    parts.push(trunk);
+    const leaf = pink ? 0xffb7d5 : (Math.random() < 0.5 ? 0x7ed957 : 0x4caf50);
+    for (let j = 0; j < 3; j++) {
+      const r = (1.15 - j * 0.28) * s, y = (1.5 + j * 0.85) * s;
+      parts.push(coloredGeo(new THREE.SphereGeometry(r, 10, 8), j === 0 ? leaf : (pink ? 0xffc9de : leaf), M.identity().makeTranslation(x, y, z)));
+    }
+  }
+  scene.add(new THREE.Mesh(mergeGeos(parts), new THREE.MeshLambertMaterial({ vertexColors: true })));
+})();
+const cloudGroup = new THREE.Group();
+(function clouds() {
+  for (let i = 0; i < 9; i++) {
+    const parts = [];
+    const n = randi(3, 4);
+    for (let j = 0; j < n; j++) {
+      const r = rand(2.2, 4.2);
+      parts.push(coloredGeo(new THREE.SphereGeometry(r, 10, 8), 0xffffff, M.identity().makeTranslation((j - n / 2) * r * 1.1, rand(-0.5, 0.5), rand(-1.5, 1.5)).scale(S3.set(1, 0.62, 1))));
+    }
+    const mesh = new THREE.Mesh(mergeGeos(parts), new THREE.MeshLambertMaterial({ vertexColors: true }));
+    const a = rand(0, TAU), d = rand(50, 210);
+    mesh.position.set(Math.cos(a) * d, rand(34, 66), Math.sin(a) * d);
+    cloudGroup.add(mesh);
+  }
+  scene.add(cloudGroup);
+})();
+
+const shadowMesh = new THREE.InstancedMesh(
+  (() => { const g = new THREE.CircleGeometry(1, 22); g.rotateX(-Math.PI / 2); return g; })(),
+  new THREE.MeshBasicMaterial({ color: 0x33691e, transparent: true, opacity: 0.2, depthWrite: false }), 20);
+shadowMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+scene.add(shadowMesh);
+
+const rings = [];
+for (let i = 0; i < 8; i++) {
+  const r = new THREE.Mesh(new THREE.TorusGeometry(1, 0.12, 8, 40), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0 }));
+  r.rotation.x = -Math.PI / 2; r.visible = false; scene.add(r);
+  rings.push({ mesh: r, life: 0, max: 0.6, size: 8 });
+}
+function popRing(x, z, hex, size) {
+  const r = rings.find(r => r.life <= 0) || rings[0];
+  r.life = r.max = 0.6; r.size = size;
+  r.mesh.visible = true; r.mesh.position.set(x, 0.5, z); r.mesh.material.color.setHex(hex);
+}
+
+let audioCtx = null, muted = localStorage.getItem('sss3d_mute') === '1';
+function ac() { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); if (audioCtx.state === 'suspended') audioCtx.resume(); return audioCtx; }
+function beep(f0, f1, dur, type, vol) {
+  if (muted) return;
+  try {
+    const ctx = ac(), o = ctx.createOscillator(), g = ctx.createGain(), t0 = ctx.currentTime;
+    o.type = type; o.frequency.setValueAtTime(f0, t0); o.frequency.exponentialRampToValueAtTime(Math.max(f1, 1), t0 + dur);
+    g.gain.setValueAtTime(vol, t0); g.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
+    o.connect(g); g.connect(ctx.destination); o.start(t0); o.stop(t0 + dur);
+  } catch (e) { }
+}
+const sfx = {
+  eat: () => beep(rand(500, 620), 900, 0.07, 'square', 0.045),
+  kill: () => { beep(660, 660, 0.09, 'triangle', 0.12); setTimeout(() => beep(880, 880, 0.12, 'triangle', 0.12), 90); },
+  die: () => beep(300, 70, 0.5, 'sawtooth', 0.16),
+  boost: () => beep(220, 700, 0.14, 'sawtooth', 0.06),
+  click: () => beep(760, 760, 0.05, 'sine', 0.08)
+};
+
+const FX = new Float32Array(FOOD_CAP), FZ = new Float32Array(FOOD_CAP), FV = new Float32Array(FOOD_CAP), FC = new Uint32Array(FOOD_CAP);
+const FPH = new Float32Array(FOOD_CAP), FR = new Float32Array(FOOD_CAP);
+const foodAlive = new Uint8Array(FOOD_CAP), freeSlots = [];
+let foodAliveCount = 0;
+for (let i = FOOD_CAP - 1; i >= FOOD_N; i--) freeSlots.push(i);
+const foodMesh = new THREE.InstancedMesh(new THREE.SphereGeometry(1, 12, 9), new THREE.MeshLambertMaterial({ emissive: 0x666666 }), FOOD_CAP);
+foodMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+scene.add(foodMesh);
+function spawnFood(x, z, v, hex) {
+  if (!freeSlots.length) return;
+  const i = freeSlots.pop();
+  FX[i] = x; FZ[i] = z; FV[i] = v; FC[i] = hex; FPH[i] = rand(0, TAU); FR[i] = 0.3 + v * 0.09;
+  if (!foodAlive[i]) { foodAlive[i] = 1; foodAliveCount++; }
+  foodMesh.setColorAt(i, C1.setHex(hex));
+  if (foodMesh.instanceColor) foodMesh.instanceColor.needsUpdate = true;
+}
+function killFood(i) { foodAlive[i] = 0; foodAliveCount--; freeSlots.push(i); }
+function randFoodHex() { return CANDY[randi(0, CANDY.length - 1)]; }
+function spawnRandomFood() {
+  const a = rand(0, TAU), d = Math.sqrt(Math.random()) * (ARENA_R - 6);
+  const roll = Math.random();
+  spawnFood(Math.cos(a) * d, Math.sin(a) * d, roll < 0.72 ? 1 : roll < 0.95 ? 2 : 5, randFoodHex());
+}
+for (let i = 0; i < FOOD_N; i++) spawnRandomFood();
+
+let headProto = null, headReady = false;
+function fallbackHead() {
+  const g = new THREE.Group();
+  const skin = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.5, name: 'Skin' });
+  const s = new THREE.Mesh(new THREE.SphereGeometry(1, 18, 14), skin); s.scale.set(1.35, 0.9, 1.0); g.add(s);
+  return g;
+}
+new GLTFLoader().load('assets/snake_head.glb',
+  g => { headProto = g.scene; headReady = true; onAssetsReady(); },
+  undefined,
+  () => { headProto = fallbackHead(); headReady = true; onAssetsReady(); });
+
+class Trail {
+  constructor() { this.x = new Float32Array(TRAIL_N); this.z = new Float32Array(TRAIL_N); this.head = 0; this.count = 0; }
+  clear(x, z) { this.x[0] = x; this.z[0] = z; this.head = 0; this.count = 1; }
+  push(x, z) { this.head = (this.head + 1) % TRAIL_N; this.x[this.head] = x; this.z[this.head] = z; if (this.count < TRAIL_N) this.count++; }
+  at(k) { const i = ((this.head - k) % TRAIL_N + TRAIL_N) % TRAIL_N; return [this.x[i], this.z[i]]; }
+}
+
+const bodyGeo = new THREE.SphereGeometry(1, 18, 13);
+function makeLabel(name) {
+  const c = document.createElement('canvas'); c.width = 256; c.height = 72;
+  const g = c.getContext('2d');
+  g.font = 'bold 44px "Microsoft YaHei",sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.lineWidth = 9; g.strokeStyle = 'rgba(255,255,255,0.95)'; g.strokeText(name, 128, 38);
+  g.fillStyle = '#37474f'; g.fillText(name, 128, 38);
+  const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthWrite: false }));
+  sp.scale.set(4.6, 1.3, 1); sp.renderOrder = 5;
+  return sp;
+}
+
+const snakes = [];
+let player = null, phase = 'menu', gameTime = 0, shake = 0;
+const respawnQueue = [];
+let usedColors = new Set(), usedNames = new Set();
+
+function radiusOf(score) { return Math.min(0.52 + Math.pow(Math.max(score, 1), 0.46) * 0.028, 1.35); }
+function segCountOf(score) { return Math.min(6 + Math.floor(Math.pow(Math.max(score, 1), 0.62) * 0.75), MAX_SEG); }
+
+class Snake {
+  constructor(name, hex, isPlayer) {
+    this.name = name; this.hex = hex; this.isPlayer = isPlayer;
+    this.alive = true; this.score = 10; this.kills = 0; this.deaths = 0;
+    this.x = 0; this.z = 0; this.a = rand(0, TAU); this.targetA = this.a;
+    this.boost = false; this.wander = rand(0, TAU); this.thinkT = rand(0, 0.15);
+    this.dropT = 0; this.turnVel = 0; this.prevA = this.a; this.deadT = 0;
+    this.trail = new Trail();
+    this.shield = isPlayer ? 2.5 : 1.0;
+    this.sx = new Float32Array(MAX_SEG); this.sz = new Float32Array(MAX_SEG);
+    this.segs = segCountOf(this.score); this.r = radiusOf(this.score); this.spacing = this.r * 0.58;
+    const mat = new THREE.MeshLambertMaterial({ color: 0xffffff });
+    this.body = new THREE.InstancedMesh(bodyGeo, mat, MAX_SEG);
+    this.body.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    this.body.frustumCulled = false;
+    for (let i = 0; i < MAX_SEG; i++) this.body.setColorAt(i, C1.setHex(i % 4 < 2 ? hex : ((hex >> 1) & 0x7f7f7f)));
+    scene.add(this.body);
+    this.headGroup = new THREE.Group();
+    this.inner = null;
+    this.label = null;
+    this.headGroup.visible = false;
+    scene.add(this.headGroup);
+  }
+  attachHead() {
+    if (!headReady || this.inner) return;
+    this.inner = buildHead(this.hex);
+    this.headGroup.add(this.inner);
+    this.label = makeLabel(this.name);
+    this.label.position.y = 2.6;
+    this.headGroup.add(this.label);
+  }
+  spawnAt(x, z) {
+    this.x = x; this.z = z; this.a = this.targetA = Math.atan2(-z, -x) + rand(-0.5, 0.5);
+    this.trail.clear(x, z);
+    for (let k = 1; k < 30; k++) this.trail.push(x - Math.cos(this.a) * k * 0.5, z - Math.sin(this.a) * k * 0.5);
+    this.alive = true; this.boost = false;
+    this.shield = this.isPlayer ? 2.5 : 1.0;
+  }
+  updateDerived() {
+    const ns = segCountOf(this.score);
+    this.r = radiusOf(this.score);
+    this.spacing = this.r * 0.58;
+    this.segs = ns;
+  }
+  move(dt) {
+    const sp = BASE_SPEED * (this.boost && this.score > 25 ? BOOST_MULT : 1);
+    let maxTurn = 3.8;
+    const d = angDiff(this.a, this.targetA);
+    const ta = clamp(d, -maxTurn * dt, maxTurn * dt);
+    this.a += ta;
+    if (this.a > Math.PI) this.a -= TAU; if (this.a < -Math.PI) this.a += TAU;
+    this.x += Math.cos(this.a) * sp * dt;
+    this.z += Math.sin(this.a) * sp * dt;
+    if (this.boost && this.score > 25) {
+      this.score -= dt * 9;
+      this.dropT -= dt;
+      if (this.dropT <= 0) { this.dropT = 0.16; const t = this.trail.at(Math.min(this.trail.count - 1, Math.floor(this.segs * this.spacing / 0.42))); spawnFood(t[0] + rand(-0.8, 0.8), t[1] + rand(-0.8, 0.8), 1, this.hex); }
+    }
+    this.updateDerived();
+    const last = this.trail.at(0);
+    const dx = this.x - last[0], dz = this.z - last[1];
+    if (dx * dx + dz * dz >= 0.18) this.trail.push(this.x, this.z);
+    this.sampleSegs();
+    return sp;
+  }
+  sampleSegs() {
+    let acc = 0, k = 0;
+    let [px, pz] = [this.x, this.z];
+    for (let i = 0; i < this.segs; i++) {
+      const target = (i + 0.7) * this.spacing;
+      while (acc < target && k < this.trail.count - 1) {
+        const [qx, qz] = this.trail.at(k + 1);
+        const d = Math.hypot(px - qx, pz - qz);
+        if (acc + d >= target) {
+          const f = (target - acc) / (d || 1);
+          this.sx[i] = px + (qx - px) * f; this.sz[i] = pz + (qz - pz) * f;
+          acc = target; break;
+        }
+        acc += d; px = qx; pz = qz; k++;
+      }
+      if (acc < target) { this.sx[i] = px; this.sz[i] = pz; }
+    }
+  }
+  syncMeshes(dt, speed) {
+    const boosting = this.boost && this.score > 25;
+    this.headGroup.visible = this.alive && (this.shield <= 0 || Math.floor(gameTime * 8) % 2 === 0);
+    this.body.visible = this.alive;
+    if (!this.alive) return;
+    const h = this.headGroup;
+    h.position.set(this.x, this.r * 0.95, this.z);
+    h.rotation.y = -this.a;
+    h.scale.setScalar(this.r * 1.32);
+    const inner = this.inner;
+    if (inner) {
+      inner.rotation.x = clamp(-this.turnVel * 0.8, -0.45, 0.45);
+      inner.traverse(o => {
+        if (o.isMesh && o.material.name === 'Skin') o.material.emissiveIntensity += ((boosting ? 0.55 : 0) - o.material.emissiveIntensity) * Math.min(1, dt * 8);
+      });
+      if (this.label) this.label.position.y = 2.6 / (this.r * 1.32);
+    }
+    for (let i = 0; i < this.segs; i++) {
+      const taper = i > this.segs - 9 ? 1 - (i - (this.segs - 9)) / 9 * 0.68 : 1;
+      const s = this.r * (i < 2 ? 1.04 : 1) * taper;
+      M.compose(V3.set(this.sx[i], this.r * 0.92, this.sz[i]), Q0.identity(), S3.set(s, s, s));
+      this.body.setMatrixAt(i, M);
+    }
+    this.body.count = this.segs;
+    this.body.instanceMatrix.needsUpdate = true;
+  }
+  die(killer) {
+    if (!this.alive) return;
+    this.alive = false; this.deaths++; this.deadT = gameTime;
+    const n = Math.floor(this.segs / 2);
+    for (let i = 0; i < n; i++) {
+      const a = rand(0, TAU), d = rand(0, 1.6);
+      spawnFood(this.sx[i * 2] + Math.cos(a) * d, this.sz[i * 2] + Math.sin(a) * d, clamp(1.6 + this.score * 0.007, 1.5, 6), this.hex);
+    }
+    popRing(this.x, this.z, this.hex, 7 + this.r * 5);
+    if (killer && killer.alive) { killer.kills++; killer.score += 8; }
+    if (this.isPlayer) {
+      sfx.die(); shake = 0.7;
+      onPlayerDeath(killer);
+    } else if (player && player.alive && dist2(this.x, this.z, player.x, player.z) < 90 * 90) sfx.kill();
+    addFeed(this.isPlayer ? `${this.name} 被终结了` : killer ? `${killer.name} 终结了 ${this.name}` : `${this.name} 撞墙了`, this.hex);
+  }
+  destroy() {
+    scene.remove(this.body); scene.remove(this.headGroup);
+    this.body.dispose(); 
+    const i = snakes.indexOf(this); if (i >= 0) snakes.splice(i, 1);
+  }
+}
+
+function dist2(x1, z1, x2, z2) { const dx = x1 - x2, dz = z1 - z2; return dx * dx + dz * dz; }
+function buildHead(hex) {
+  const c = headProto.clone(true);
+  c.traverse(o => {
+    if (o.isMesh) {
+      o.material = o.material.clone();
+      if (o.material.name === 'Skin') { o.material.color.setHex(hex); o.material.emissive.setHex(hex); o.material.emissiveIntensity = 0; }
+    }
+  });
+  return c;
+}
+function safeSpot(minClear) {
+  for (let t = 0; t < 80; t++) {
+    const a = rand(0, TAU), d = Math.sqrt(Math.random()) * ARENA_R * 0.68;
+    const x = Math.cos(a) * d, z = Math.sin(a) * d;
+    let ok = true;
+    for (const s of snakes) {
+      if (!s.alive) continue;
+      if (dist2(x, z, s.x, s.z) < 30 * 30) { ok = false; break; }
+      for (let i = 0; i < s.segs; i += 2) if (dist2(x, z, s.sx[i], s.sz[i]) < minClear * minClear) { ok = false; break; }
+      if (!ok) break;
+    }
+    if (ok) return [x, z];
+  }
+  return [rand(-40, 40), rand(-40, 40)];
+}
+function pickColor() { const free = PALETTE.filter(c => !usedColors.has(c)); const c = free.length ? free[randi(0, free.length - 1)] : PALETTE[randi(0, PALETTE.length - 1)]; return c; }
+function pickName() { const free = AI_NAMES.filter(n => !usedNames.has(n)); const n = free.length ? free[randi(0, free.length - 1)] : '野生蛇' + randi(10, 99); return n; }
+
+function probeHit(s, ang, dist) {
+  const px = s.x + Math.cos(ang) * dist, pz = s.z + Math.sin(ang) * dist;
+  if (px * px + pz * pz > (ARENA_R - 3) * (ARENA_R - 3)) return true;
+  for (const o of snakes) {
+    if (o === s || !o.alive) continue;
+    const rr = (o.r + s.r * 0.85) * (o.r + s.r * 0.85);
+    for (let i = 0; i < o.segs; i += 2) if (dist2(px, pz, o.sx[i], o.sz[i]) < rr) return true;
+  }
+  return false;
+}
+function aiThink(s) {
+  const dc = Math.hypot(s.x, s.z);
+  s.boost = false;
+  if (dc > ARENA_R - 30) {
+    const toC = Math.atan2(-s.z, -s.x);
+    if (dc > ARENA_R - 12) s.targetA = toC + rand(-0.3, 0.3);
+    else s.targetA = s.targetA + clamp(angDiff(s.targetA, toC), -1.2, 1.2) * 0.5;
+  }
+  const ahead = s.a, d1 = BASE_SPEED * 0.55, d2 = BASE_SPEED * 1.05;
+  if (probeHit(s, ahead, d1) || probeHit(s, ahead, d2) || probeHit(s, ahead + angDiff(ahead, s.targetA) * 0.5, d2)) {
+    const l1 = !probeHit(s, s.a + 0.55, d2), r1 = !probeHit(s, s.a - 0.55, d2);
+    if (l1 && !r1) s.targetA = s.a + 0.9;
+    else if (r1 && !l1) s.targetA = s.a - 0.9;
+    else if (l1 && r1) s.targetA = s.a + (probeHit(s, s.a + 0.55, d2 * 1.6) ? -0.9 : 0.9);
+    else s.targetA = s.a + Math.PI * 0.9;
+    return;
+  }
+  let flee = null, fleeD = 1e9;
+  for (const o of snakes) {
+    if (o === s || !o.alive) continue;
+    const d = Math.hypot(o.x - s.x, o.z - s.z);
+    if (d < 20 + o.r * 5 && o.score > s.score * 1.15) {
+      const toMe = Math.atan2(s.z - o.z, s.x - o.x);
+      if (Math.abs(angDiff(o.a, toMe)) < 1.0 && d < fleeD) { flee = o; fleeD = d; }
+    }
+  }
+  if (flee) {
+    s.targetA = Math.atan2(s.z - flee.z, s.x - flee.x);
+    s.boost = fleeD < 12 && s.score > 30;
+    return;
+  }
+  let prey = null, preyD = 1e9;
+  for (const o of snakes) {
+    if (o === s || !o.alive) continue;
+    if (o.score < s.score * 0.7) {
+      const d = Math.hypot(o.x - s.x, o.z - s.z);
+      if (d < 26 && d < preyD) { prey = o; preyD = d; }
+    }
+  }
+  if (prey && s.score > 45 && Math.random() < 0.75) {
+    const px = prey.x + Math.cos(prey.a) * prey.score * 0.06 + Math.cos(prey.a) * 4;
+    const pz = prey.z + Math.sin(prey.a) * prey.score * 0.06 + Math.sin(prey.a) * 4;
+    s.targetA = Math.atan2(pz - s.z, px - s.x);
+    s.boost = preyD < 15 && s.score > 60;
+    return;
+  }
+  let best = -1, bestScore = 0, bi = -1;
+  for (let t = 0; t < 42; t++) {
+    const i = randi(0, FOOD_CAP - 1);
+    if (!foodAlive[i]) continue;
+    const d = Math.hypot(FX[i] - s.x, FZ[i] - s.z);
+    const v = FV[i] / (14 + d);
+    if (v > bestScore) { bestScore = v; bi = i; }
+  }
+  if (bi >= 0) {
+    s.targetA = Math.atan2(FZ[bi] - s.z, FX[bi] - s.x);
+    if (bestScore > 0.02 && Math.random() < 0.01 && s.score > 40) s.boost = true;
+  } else {
+    s.wander += rand(-0.6, 0.6);
+    s.targetA = s.wander;
+  }
+}
+
+function eatFoods(s) {
+  const er = s.r * 1.2 + 0.6, er2 = er * er;
+  const mr = 3.4 + s.r * 1.6, mr2 = mr * mr;
+  for (let i = 0; i < FOOD_CAP; i++) {
+    if (!foodAlive[i]) continue;
+    const dx = s.x - FX[i], dz = s.z - FZ[i];
+    const d2 = dx * dx + dz * dz;
+    if (d2 > mr2) continue;
+    if (d2 < er2) {
+      killFood(i);
+      s.score += FV[i];
+      s.updateDerived();
+      if (s.isPlayer) sfx.eat();
+    } else {
+      const pull = Math.min(1, 9 * lastDt);
+      FX[i] += dx * pull; FZ[i] += dz * pull;
+    }
+  }
+}
+
+let lastDt = 0.016;
+function collisions() {
+  for (const A of snakes) {
+    if (!A.alive) continue;
+    if (A.x * A.x + A.z * A.z > (ARENA_R - A.r * 0.4) * (ARENA_R - A.r * 0.4)) { A.die(null); continue; }
+    if (A.shield > 0) continue;
+    for (const B of snakes) {
+      if (B === A || !B.alive) continue;
+      const hh = (A.r + B.r) * 0.72;
+      if (dist2(A.x, A.z, B.x, B.z) < hh * hh) {
+        if (A.score <= B.score + 0.5) A.die(B);
+        break;
+      }
+      const rr = (B.r * 0.92 + A.r * 0.5) * (B.r * 0.92 + A.r * 0.5);
+      let hit = false;
+      for (let i = 0; i < B.segs; i++) {
+        const dx = A.x - B.sx[i], dz = A.z - B.sz[i];
+        if (dx * dx + dz * dz < rr) { hit = true; break; }
+      }
+      if (hit) { A.die(B); break; }
+    }
+  }
+}
+
+const feedBox = $('killfeed');
+function addFeed(text, hex) {
+  const div = document.createElement('div');
+  div.className = 'feedItem'; div.textContent = text;
+  if (hex) div.style.color = '#' + new THREE.Color(hex).getHexString();
+  feedBox.prepend(div);
+  while (feedBox.children.length > 4) feedBox.lastChild.remove();
+  setTimeout(() => div.remove(), 6100);
+}
+
+const boardList = $('boardList');
+function rankOf(s) {
+  let r = 1;
+  for (const o of snakes) if (o !== s && o.alive && o.score > s.score) r++;
+  return r;
+}
+let hudT = 0;
+function updateHUD(dt) {
+  hudT -= dt;
+  if (hudT > 0) return;
+  hudT = 0.15;
+  const alive = snakes.filter(s => s.alive).sort((a, b) => b.score - a.score);
+  if (player) {
+    $('hudScore').textContent = Math.floor(player.score);
+    $('hudLen').textContent = player.segs;
+    $('hudKills').textContent = player.kills;
+    $('hudRank').textContent = player.alive ? '#' + rankOf(player) : '-';
+  }
+  let html = '';
+  alive.slice(0, 8).forEach((s, i) => {
+    html += `<li class="${s.isPlayer ? 'me' : ''}"><span class="rk">${i + 1}</span><span>${s.name}</span><span>${Math.floor(s.score)}</span></li>`;
+  });
+  if (player && player.alive && rankOf(player) > 8) {
+    html += `<li class="me"><span class="rk">${rankOf(player)}</span><span>${player.name}</span><span>${Math.floor(player.score)}</span></li>`;
+  }
+  boardList.innerHTML = html;
+}
+
+function drawMinimap() {
+  const W = minimapC.width, cx = W / 2, k = (W / 2 - 5) / ARENA_R;
+  mmx.clearRect(0, 0, W, W);
+  mmx.fillStyle = 'rgba(255,255,255,0.72)';
+  mmx.beginPath(); mmx.arc(cx, cx, W / 2 - 3, 0, TAU); mmx.fill();
+  mmx.strokeStyle = '#ff8a65'; mmx.lineWidth = 2;
+  mmx.beginPath(); mmx.arc(cx, cx, ARENA_R * k, 0, TAU); mmx.stroke();
+  for (const s of snakes) {
+    if (!s.alive) continue;
+    mmx.fillStyle = '#' + new THREE.Color(s.hex).getHexString();
+    mmx.beginPath(); mmx.arc(cx + s.x * k, cx + s.z * k, s.isPlayer ? 4.5 : 3, 0, TAU); mmx.fill();
+    if (s.isPlayer) { mmx.strokeStyle = '#fff'; mmx.lineWidth = 2; mmx.stroke(); }
+  }
+}
+
+const input = { mx: innerWidth / 2, my: innerHeight / 2, mouseDown: false, keyBoost: false, joyId: -1, jx: 0, jy: 0, joyActive: false };
+addEventListener('mousemove', e => { input.mx = e.clientX; input.my = e.clientY; });
+addEventListener('mousedown', e => { if (e.button === 0) input.mouseDown = true; });
+addEventListener('mouseup', e => { if (e.button === 0) input.mouseDown = false; });
+addEventListener('keydown', e => { if (e.code === 'Space') { input.keyBoost = true; e.preventDefault(); } });
+addEventListener('keyup', e => { if (e.code === 'Space') input.keyBoost = false; });
+cvs.addEventListener('touchstart', e => {
+  e.preventDefault();
+  const t = e.changedTouches[0];
+  input.joyId = t.identifier; input.jx = t.clientX; input.jy = t.clientY; input.joyActive = true;
+}, { passive: false });
+cvs.addEventListener('touchmove', e => {
+  e.preventDefault();
+  for (const t of e.changedTouches) if (t.identifier === input.joyId) { input.mx = t.clientX; input.my = t.clientY; }
+}, { passive: false });
+const endTouch = e => { for (const t of e.changedTouches) if (t.identifier === input.joyId) input.joyActive = false; };
+cvs.addEventListener('touchend', endTouch);
+cvs.addEventListener('touchcancel', endTouch);
+const boostBtn = $('boostBtn');
+boostBtn.addEventListener('pointerdown', e => { e.preventDefault(); input.mouseDown = true; boostBtn.classList.add('on'); });
+addEventListener('pointerup', () => { input.mouseDown = false; boostBtn.classList.remove('on'); });
+addEventListener('contextmenu', e => e.preventDefault());
+
+const V2 = new THREE.Vector3();
+function steerPlayer(s) {
+  V2.set(s.x, s.r, s.z).project(camera);
+  const hx = (V2.x * 0.5 + 0.5) * innerWidth, hy = (-V2.y * 0.5 + 0.5) * innerHeight;
+  const dx = input.mx - hx, dy = input.my - hy;
+  if (dx * dx + dy * dy < 100) return;
+  const rel = Math.atan2(dx, -dy);
+  s.targetA = s.a + rel;
+}
+
+const camState = { pos: new THREE.Vector3(0, 60, 90), look: new THREE.Vector3() };
+function updateCamera(dt) {
+  let target = player && player.alive ? player : null;
+  if (!target && phase === 'dead') {
+    let best = null;
+    for (const s of snakes) if (s.alive && (!best || s.score > best.score)) best = s;
+    target = best;
+  }
+  if (phase === 'menu' || !target) {
+    const a = gameTime * 0.07;
+    camState.pos.lerp(V3.set(Math.cos(a) * 95, 62, Math.sin(a) * 95), Math.min(1, dt * 2));
+    camState.look.lerp(V3.set(0, 0, 0), Math.min(1, dt * 2));
+  } else {
+    const dir = V3.set(Math.cos(target.a), 0, Math.sin(target.a));
+    const behind = 13 + target.r * 10, height = 10.5 + target.r * 9;
+    const want = S3.set(target.x - dir.x * behind, height, target.z - dir.z * behind);
+    camState.pos.lerp(want, Math.min(1, dt * 5));
+    camState.look.lerp(V3.set(target.x + dir.x * 7, 1.2, target.z + dir.z * 7), Math.min(1, dt * 5));
+  }
+  camera.position.copy(camState.pos);
+  if (shake > 0) {
+    camera.position.x += rand(-1, 1) * shake * 2;
+    camera.position.y += rand(-1, 1) * shake * 2;
+    shake = Math.max(0, shake - dt * 1.6);
+  }
+  camera.lookAt(camState.look);
+  const wantFov = player && player.alive && player.boost && player.score > 25 ? 67 : 62;
+  camera.fov += (wantFov - camera.fov) * Math.min(1, dt * 4);
+  camera.updateProjectionMatrix();
+}
+
+let bestScore = +(localStorage.getItem('sss3d_best') || 0);
+function onPlayerDeath(killer) {
+  phase = 'dead';
+  if (Math.floor(player.score) > bestScore) { bestScore = Math.floor(player.score); localStorage.setItem('sss3d_best', bestScore); }
+  setTimeout(() => {
+    if (phase !== 'dead') return;
+    $('deathInfo').innerHTML = `本局分数 <b>${Math.floor(player.score)}</b> · 长度 <b>${player.segs}</b> · 击杀 <b>${player.kills}</b><br>历史最佳 <b>${bestScore}</b>${killer ? `<br>被 <b style="color:#${new THREE.Color(killer.hex).getHexString()}">${killer.name}</b> 终结` : '撞上了世界边界'}`;
+    $('deathScreen').classList.remove('hidden');
+    $('specHint').classList.remove('hidden');
+    if (AUTO) setTimeout(() => respawnPlayer(), 1800);
+  }, 1100);
+}
+function respawnPlayer() {
+  $('deathScreen').classList.add('hidden');
+  $('specHint').classList.add('hidden');
+  startRun(playerName, playerHex);
+}
+
+let playerName = '无名小蛇', playerHex = PALETTE[0];
+function startRun(name, hex) {
+  playerName = name; playerHex = hex;
+  if (player) { usedColors.delete(player.hex); usedNames.delete(player.name); player.destroy(); }
+  const [x, z] = safeSpot(14);
+  player = new Snake(name, hex, true);
+  usedColors.add(hex); usedNames.add(name);
+  snakes.push(player);
+  player.attachHead();
+  player.score = 10;
+  player.spawnAt(x, z);
+  phase = 'play';
+  $('menu').classList.add('hidden');
+  $('hud').classList.remove('hidden');
+  camState.pos.set(x - Math.cos(player.a) * 20, 20, z - Math.sin(player.a) * 20);
+}
+
+function spawnAI() {
+  const hex = pickColor(), name = pickName();
+  const s = new Snake(name, hex, false);
+  usedColors.add(hex); usedNames.add(name);
+  const [x, z] = safeSpot(12);
+  snakes.push(s);
+  s.attachHead();
+  s.score = rand(5, 45);
+  s.spawnAt(x, z);
+  return s;
+}
+
+let accSpawnGuard = 0;
+function update(dt) {
+  lastDt = dt;
+  gameTime += dt;
+  cloudGroup.rotation.y += dt * 0.004;
+  for (const r of rings) {
+    if (r.life > 0) {
+      r.life -= dt;
+      const f = 1 - r.life / r.max;
+      r.mesh.scale.setScalar(1 + f * r.size);
+      r.mesh.material.opacity = 0.8 * (1 - f);
+      if (r.life <= 0) r.mesh.visible = false;
+    }
+  }
+  for (const s of snakes) {
+    if (!s.alive) continue;
+    s.shield = Math.max(0, s.shield - dt);
+    if (!s.isPlayer || AUTO) {
+      s.thinkT -= dt;
+      if (s.thinkT <= 0) { s.thinkT = 0.13 + rand(0, 0.05); aiThink(s); }
+    } else {
+      steerPlayer(s);
+      s.boost = input.mouseDown || input.keyBoost;
+    }
+    s.prevA = s.a;
+    s.move(dt);
+    s.turnVel = s.turnVel * 0.8 + (angDiff(s.prevA, s.a) / dt) * 0.2;
+    eatFoods(s);
+  }
+  collisions();
+  for (let i = snakes.length - 1; i >= 0; i--) {
+    const s = snakes[i];
+    if (!s.alive && !s.isPlayer) {
+      if (gameTime - s.deadT > 0.1) { usedColors.delete(s.hex); usedNames.delete(s.name); s.destroy(); respawnQueue.push(gameTime + rand(1.2, 2.8)); }
+    }
+  }
+  for (let i = respawnQueue.length - 1; i >= 0; i--) {
+    if (respawnQueue[i] <= gameTime) {
+      respawnQueue.splice(i, 1);
+      if (snakes.filter(s => !s.isPlayer).length < AI_N) spawnAI();
+    }
+  }
+  accSpawnGuard += dt;
+  if (foodAliveCount < FOOD_N && accSpawnGuard > 0.05) { accSpawnGuard = 0; spawnRandomFood(); }
+  let si = 0;
+  for (const s of snakes) {
+    if (s.alive) {
+      M.compose(V3.set(s.x, 0.05, s.z), Q0.identity(), S3.set(s.r * 1.8, 1, s.r * 1.8));
+      shadowMesh.setMatrixAt(si++, M);
+    }
+  }
+  shadowMesh.count = si;
+  shadowMesh.instanceMatrix.needsUpdate = true;
+  for (let i = 0; i < FOOD_CAP; i++) {
+    if (foodAlive[i]) {
+      const bob = 0.42 + Math.sin(gameTime * 2.4 + FPH[i]) * 0.13;
+      const sc = FR[i] * (1 + Math.sin(gameTime * 3.1 + FPH[i]) * 0.08);
+      M.compose(V3.set(FX[i], bob, FZ[i]), Q0.identity(), S3.set(sc, sc, sc));
+    } else M.makeScale(0, 0, 0);
+    foodMesh.setMatrixAt(i, M);
+  }
+  foodMesh.instanceMatrix.needsUpdate = true;
+  for (const s of snakes) s.syncMeshes(dt, BASE_SPEED);
+  updateHUD(dt);
+  drawMinimap();
+  const warn = $('borderWarn');
+  if (player && player.alive) {
+    const dc = Math.hypot(player.x, player.z);
+    const t = clamp((dc - (ARENA_R - 14)) / 14, 0, 1);
+    warn.style.boxShadow = `inset 0 0 130px rgba(255,64,40,${t * 0.55})`;
+  } else warn.style.boxShadow = 'inset 0 0 130px rgba(255,64,40,0)';
+}
+
+let last = performance.now(), fpsAcc = 0, fpsN = 0, lowT = 0;
+function frame(now) {
+  requestAnimationFrame(frame);
+  let dt = clamp((now - last) / 1000, 0, 0.05);
+  last = now;
+  update(dt);
+  updateCamera(dt);
+  renderer.render(scene, camera);
+  fpsAcc += dt; fpsN++;
+  if (fpsAcc > 2) {
+    const fps = fpsN / fpsAcc;
+    fpsAcc = 0; fpsN = 0;
+    if (fps < 42) { lowT++; if (lowT >= 2 && renderer.getPixelRatio() > 1) { renderer.setPixelRatio(1); lowT = 0; } }
+    else lowT = 0;
+  }
+}
+
+const menu = $('menu'), nameInput = $('nameInput'), playBtn = $('playBtn');
+(function buildSkinRow() {
+  const row = $('skinRow');
+  PALETTE.forEach((hex, i) => {
+    const d = document.createElement('div');
+    d.className = 'skin' + (i === 0 ? ' sel' : '');
+    d.style.background = '#' + new THREE.Color(hex).getHexString();
+    d.onclick = () => { document.querySelectorAll('.skin').forEach(e => e.classList.remove('sel')); d.classList.add('sel'); playerHex = hex; sfx.click(); };
+    row.appendChild(d);
+  });
+})();
+$('muteBtn').textContent = muted ? '音效：关' : '音效：开';
+$('muteBtn').onclick = () => { muted = !muted; localStorage.setItem('sss3d_mute', muted ? '1' : '0'); $('muteBtn').textContent = muted ? '音效：关' : '音效：开'; if (!muted) sfx.click(); };
+playBtn.onclick = () => {
+  if (!headReady) return;
+  ac(); sfx.click();
+  const nm = (nameInput.value.trim() || '无名小蛇').slice(0, 8);
+  $('deathScreen').classList.add('hidden');
+  startRun(nm, playerHex);
+};
+$('respawnBtn').onclick = () => { sfx.click(); respawnPlayer(); };
+
+function onAssetsReady() {
+  for (const s of snakes) s.attachHead();
+  playBtn.textContent = '开 战';
+  playBtn.style.opacity = 1;
+  if (AUTO) startRun('测试蛇', PALETTE[randi(0, 15)]);
+}
+playBtn.textContent = '加载中…';
+playBtn.style.opacity = 0.6;
+for (let i = 0; i < AI_N; i++) spawnAI();
+
+window.__game = {
+  get snakes() { return snakes; }, get player() { return player; }, get phase() { return phase; }, get time() { return gameTime; },
+  get foodAliveCount() { return foodAliveCount; },
+  start: (n, c) => startRun(n || '测试蛇', c || PALETTE[0]),
+  stats() {
+    const alive = snakes.filter(s => s.alive).sort((a, b) => b.score - a.score);
+    return {
+      t: Math.floor(gameTime), phase, alive: alive.length,
+      top: alive.slice(0, 5).map(s => ({ n: s.name, s: Math.floor(s.score), k: s.kills })),
+      player: player ? { s: Math.floor(player.score), k: player.kills, alive: player.alive, segs: player.segs } : null,
+      foods: foodAliveCount
+    };
+  }
+};
+if (AUTO) { muted = true; }
+
+requestAnimationFrame(frame);
+
+</script>
+</body>
+</html>

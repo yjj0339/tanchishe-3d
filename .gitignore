@@ -1,0 +1,7 @@
+server.log
+shots/
+node_modules/
+tools/test-smoke.js
+part1.html
+game.js
+_check.mjs
