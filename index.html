@@ -40,6 +40,13 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:"Segoe UI","Microso
 .chip i{width:9px;height:9px;border-radius:50%}
 .chip small{color:#9ab;font-weight:400}
 #board{position:absolute;top:12px;right:12px;background:rgba(255,255,255,.9);border-radius:16px;padding:10px 14px;min-width:168px;box-shadow:0 4px 14px rgba(120,180,90,.2)}
+#taskBox{position:absolute;top:264px;right:12px;background:rgba(255,255,255,.9);border-radius:16px;padding:9px 13px;min-width:168px;box-shadow:0 4px 14px rgba(120,180,90,.2)}
+#taskBox h3{font-size:13px;color:#8fb283;margin-bottom:5px;letter-spacing:2px;text-align:center}
+.task{font-size:12px;color:#5a7a52;line-height:1.85;display:flex;align-items:center;gap:5px}
+.task .bar{flex:1;height:5px;border-radius:99px;background:#e2efd8;overflow:hidden;min-width:34px}
+.task .bar i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#9edd6f,#3cb043);width:0%}
+.task.done{color:#3cb043;font-weight:700}
+.task.done .bar i{background:#ffd54f}
 #board h3{font-size:13px;color:#8fb283;margin-bottom:6px;letter-spacing:2px;text-align:center}
 #boardList{list-style:none;font-size:13px;color:#4a6b42}
 #boardList li{display:flex;justify-content:space-between;gap:10px;padding:2px 0}
@@ -75,6 +82,8 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:"Segoe UI","Microso
   #buffBar{top:108px}
   .chip{font-size:11px;padding:3px 9px}
   #board{min-width:140px;padding:8px 10px}
+  #taskBox{top:224px;min-width:140px;padding:7px 10px}
+  .task{font-size:11px;line-height:1.75}
   #boardList{font-size:12px}
   #killfeed{top:96px;max-width:52vw}
   #killfeed.comboShift{top:140px}
@@ -129,6 +138,7 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:"Segoe UI","Microso
   <div id="comboTag"></div>
   <div id="buffBar"></div>
   <div id="board"><h3>蛇 王 榜</h3><ol id="boardList"></ol></div>
+  <div id="taskBox"><h3>本 局 任 务</h3><div id="taskList"></div></div>
   <div id="killfeed"></div>
   <canvas id="minimap" width="150" height="150"></canvas>
   <div id="topBtns">
@@ -175,7 +185,7 @@ function darker(hex, f) { const c = new THREE.Color(hex); c.multiplyScalar(f); r
 
 const $ = id => document.getElementById(id);
 const cvs = $('c3d'), minimapC = $('minimap'), mmx = minimapC.getContext('2d');
-const renderer = new THREE.WebGLRenderer({ canvas: cvs, antialias: true });
+const renderer = new THREE.WebGLRenderer({ canvas: cvs, antialias: true, powerPreference: 'high-performance' });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.setSize(innerWidth, innerHeight);
 const scene = new THREE.Scene();
@@ -232,19 +242,20 @@ const UP = new THREE.Vector3(0, 1, 0);
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
   const m = new THREE.Mesh(new THREE.CircleGeometry(ARENA_R + 110, 72), new THREE.MeshLambertMaterial({ map: tex }));
-  m.rotation.x = -Math.PI / 2; scene.add(m);
+  m.rotation.x = -Math.PI / 2; m.updateMatrix(); m.matrixAutoUpdate = false; scene.add(m);
 })();
 (function boundary() {
   const torus = new THREE.Mesh(new THREE.TorusGeometry(ARENA_R + 0.4, 0.55, 10, 130), new THREE.MeshBasicMaterial({ color: 0xffffff }));
-  torus.rotation.x = -Math.PI / 2; torus.position.y = 0.35; scene.add(torus);
+  torus.rotation.x = -Math.PI / 2; torus.position.y = 0.35; torus.updateMatrix(); torus.matrixAutoUpdate = false; scene.add(torus);
   const wall = new THREE.Mesh(new THREE.CylinderGeometry(ARENA_R, ARENA_R, 2.6, 110, 1, true), new THREE.MeshBasicMaterial({ color: 0xffab91, transparent: true, opacity: 0.11, side: THREE.DoubleSide, depthWrite: false }));
-  wall.position.y = 1.3; scene.add(wall);
+  wall.position.y = 1.3; wall.updateMatrix(); wall.matrixAutoUpdate = false; scene.add(wall);
   const pil = new THREE.InstancedMesh(new THREE.CapsuleGeometry(0.85, 2.4, 6, 12), new THREE.MeshLambertMaterial({ color: 0xffffff }), 26);
   for (let i = 0; i < 26; i++) {
     const a = i / 26 * TAU;
     M.compose(V3.set(Math.cos(a) * (ARENA_R + 0.4), 1.7, Math.sin(a) * (ARENA_R + 0.4)), Q0.identity(), S3.set(1, 1, 1));
     pil.setMatrixAt(i, M); pil.setColorAt(i, C1.setHex(i % 2 ? 0xffffff : 0xffccbf));
   }
+  pil.matrixAutoUpdate = false;
   scene.add(pil);
 })();
 (function trees() {
@@ -259,7 +270,9 @@ const UP = new THREE.Vector3(0, 1, 0);
       parts.push(coloredGeo(new THREE.SphereGeometry(r, 9, 7), j === 0 ? base : (pink ? 0xffdff0 : 0xb2e69e), M.identity().makeTranslation(x, y, z)));
     }
   }
-  scene.add(new THREE.Mesh(mergeGeos(parts), new THREE.MeshLambertMaterial({ vertexColors: true })));
+  const treeMesh = new THREE.Mesh(mergeGeos(parts), new THREE.MeshLambertMaterial({ vertexColors: true }));
+  treeMesh.matrixAutoUpdate = false;
+  scene.add(treeMesh);
 })();
 const cloudGroup = new THREE.Group();
 (function clouds() {
@@ -343,7 +356,7 @@ function beep(f0, f1, dur, type, vol, delay) {
   } catch (e) { }
 }
 const sfx = {
-  eat: () => beep(rand(500, 620), 900, 0.06, 'square', 0.04),
+  eat: combo => { const k = Math.min(combo || 0, 20); beep(500 + k * 26, 880 + k * 26, 0.06, 'square', 0.04); },
   gold: () => { beep(660, 990, 0.09, 'triangle', 0.09); beep(990, 1320, 0.12, 'triangle', 0.09, 0.09); },
   kill: () => { beep(660, 660, 0.09, 'triangle', 0.12); beep(880, 880, 0.12, 'triangle', 0.12, 0.09); },
   die: () => beep(300, 70, 0.5, 'sawtooth', 0.16),
@@ -372,7 +385,8 @@ function musicTick() {
 
 const FX = new Float32Array(FOOD_CAP), FZ = new Float32Array(FOOD_CAP), FV = new Float32Array(FOOD_CAP), FC = new Uint32Array(FOOD_CAP);
 const FPH = new Float32Array(FOOD_CAP), FR = new Float32Array(FOOD_CAP), FG = new Uint8Array(FOOD_CAP);
-const foodAlive = new Uint8Array(FOOD_CAP), freeSlots = [];
+const foodAlive = new Uint8Array(FOOD_CAP), foodPrev = new Uint8Array(FOOD_CAP), freeSlots = [];
+const ZERO_M = new THREE.Matrix4().makeScale(0, 0, 0);
 let foodAliveCount = 0;
 for (let i = FOOD_CAP - 1; i >= FOOD_N; i--) freeSlots.push(i);
 const foodMesh = new THREE.InstancedMesh(new THREE.SphereGeometry(1, 10, 8), new THREE.MeshLambertMaterial({ emissive: 0x777777 }), FOOD_CAP);
@@ -524,6 +538,7 @@ function grantBuff(s, kind) {
   s[kind + 'T'] = def.dur;
   if (s.isPlayer) {
     sfx.pickup();
+    s.statBuffs++;
     addFeed(`获得道具：${def.name}`, def.hex);
     s.buffSet.add(kind);
     if (s.buffSet.size >= 5) unlockAch('all5');
@@ -542,6 +557,7 @@ const portals = [];
     disc.rotation.x = -Math.PI / 2; disc.position.y = 0.4;
     grp.add(ring); grp.add(disc);
     grp.position.set(Math.cos(a) * d, 0, Math.sin(a) * d);
+    grp.updateMatrix(); grp.matrixAutoUpdate = false;
     scene.add(grp);
     portals.push({ x: grp.position.x, z: grp.position.z, hex: hexes[i], ring, disc });
   }
@@ -552,6 +568,7 @@ function teleportSnake(s, out) {
   s.trail.clear(s.x, s.z);
   for (let k = 1; k < 30; k++) s.trail.push(s.x - Math.cos(s.a) * k * 0.5, s.z - Math.sin(s.a) * k * 0.5);
   s.portalCD = 3;
+  s.shield = Math.max(s.shield, 1.2);
   burst(out.x, 1, out.z, out.hex, 10, 6, 7);
   burst(s.x, 1, s.z, out.hex, 10, 6, 7);
   popRing(out.x, out.z, out.hex, 5);
@@ -593,6 +610,55 @@ function spawnBoss() {
 }
 
 let eventT = 30, frenzyT = 0, rainT = 0, rainAcc = 0, slowmoT = 0;
+
+const TASK_POOL = [
+  { id: 'eat', text: '吃掉光点', ns: [40, 60, 80], get: p => p.statEaten },
+  { id: 'kill', text: '完成击杀', ns: [1, 2, 3], get: p => p.kills },
+  { id: 'score', text: '分数达到', ns: [100, 200, 350], get: p => Math.floor(p.score) },
+  { id: 'boost', text: '累计加速(秒)', ns: [8, 15, 25], get: p => Math.floor(p.boostTotal) },
+  { id: 'portal', text: '穿越传送门', ns: [1, 2, 3], get: p => p.portalCount },
+  { id: 'buff', text: '拾取道具', ns: [2, 3, 4], get: p => p.statBuffs },
+  { id: 'gold', text: '吃掉金蛋', ns: [1, 2, 3], get: p => p.statGold },
+  { id: 'top3', text: '登上排行榜前三', ns: [1], get: p => p.reachedTop3 ? 1 : 0 },
+  { id: 'crown', text: '佩戴金冠(秒)', ns: [5, 10, 20], get: p => Math.floor(p.crownTime) },
+  { id: 'survive', text: '存活(秒)', ns: [45, 75, 120], get: p => Math.floor(p.lifeTime) }
+];
+function makeTasks() {
+  const pool = TASK_POOL.slice();
+  for (let i = pool.length - 1; i > 0; i--) { const j = randi(0, i); [pool[i], pool[j]] = [pool[j], pool[i]]; }
+  return pool.slice(0, 3).map(def => ({ id: def.id, text: def.text, get: def.get, n: def.ns[randi(0, def.ns.length - 1)], done: false }));
+}
+function checkTasks(p) {
+  if (!p.tasks || !p.alive) return;
+  let doneCount = 0;
+  for (const t of p.tasks) {
+    if (t.done) { doneCount++; continue; }
+    if (t.get(p) >= t.n) {
+      t.done = true;
+      p.score += 30;
+      sfx.ach();
+      addToast(`任务完成：${t.text} ${t.n}`, '奖励 +30 分');
+    }
+    if (t.done) doneCount++;
+  }
+  if (doneCount === p.tasks.length && !p.taskAllBonus) {
+    p.taskAllBonus = true;
+    p.score += 100;
+    unlockAch('quests');
+    addToast('全部任务完成！', '奖励 +100 分');
+  }
+}
+function renderTasks(p) {
+  const box = $('taskList');
+  if (!p || !p.alive || !p.tasks) { box.innerHTML = ''; return; }
+  let html = '';
+  for (const t of p.tasks) {
+    const cur = Math.min(Math.floor(t.get(p)), t.n);
+    const pct = Math.floor(cur / t.n * 100);
+    html += `<div class="task${t.done ? ' done' : ''}"><span>${t.done ? '✔' : '○'} ${t.text}</span><span class="bar"><i style="width:${t.done ? 100 : pct}%"></i></span><span>${t.done ? '' : cur + '/' + t.n}</span></div>`;
+  }
+  box.innerHTML = html;
+}
 function triggerEvent(kind) {
   if (kind === 'foodRain') { rainT = 6; addToast('光点雨！', '全场疯狂撒粮 6 秒'); }
   else if (kind === 'frenzy') { frenzyT = 10; addToast('双倍狂欢！', '全场吃食得分 ×2，持续 10 秒'); }
@@ -628,7 +694,8 @@ const ACH_DEFS = [
   { id: 's3000', name: '千金一蛇', desc: '单局分数达到 3000', chk: p => p.score >= 3000 },
   { id: 'boss', name: '屠蛇者', desc: '击败降临的蛇王', chk: () => false },
   { id: 'portal10', name: '传送大师', desc: '单局穿越传送门 10 次', chk: p => p.portalCount >= 10 },
-  { id: 'crown60', name: '王者风范', desc: '累计佩戴王冠 60 秒', chk: p => p.crownTime >= 60 }
+  { id: 'crown60', name: '王者风范', desc: '累计佩戴王冠 60 秒', chk: p => p.crownTime >= 60 },
+  { id: 'quests', name: '任务大师', desc: '单局完成全部 3 个任务', chk: p => p.taskAllBonus }
 ];
 let achUnlocked = new Set(JSON.parse(localStorage.getItem('sss3d_ach') || '[]'));
 function unlockAch(id) {
@@ -666,6 +733,8 @@ class Snake {
     this.killTimes = [];
     this.portalCD = 0; this.portalCount = 0; this.crownTime = 0;
     this.isBoss = false; this.isLeader = false;
+    this.statEaten = 0; this.statGold = 0; this.statBuffs = 0; this.reachedTop3 = false;
+    this.tasks = null; this.taskAllBonus = false;
     this.persona = PERSONAS[randi(0, PERSONAS.length - 1)];
     this.trail = new Trail();
     this.sx = new Float32Array(MAX_SEG); this.sz = new Float32Array(MAX_SEG);
@@ -862,6 +931,11 @@ class Snake {
     }
     popRing(this.x, this.z, this.hex, 8 + this.r * 5);
     burst(this.x, 1.2, this.z, this.hex, 14, 8, 8);
+    if (!this.isPlayer && this.score >= 300) {
+      addToast('巨蛇陨落！', `${this.name} 化为满地光点`);
+      popRing(this.x, this.z, this.hex, 22);
+      if (player && player.alive && dist2(this.x, this.z, player.x, player.z) < 70 * 70) shake = 0.6;
+    }
     if (killer && killer.alive) {
       const bounty = Math.min(30, 4 + Math.floor(this.score * 0.05));
       killer.kills++;
@@ -1021,8 +1095,9 @@ function eatFoods(s) {
       s.score += gain;
       s.updateDerived();
       if (s.isPlayer) {
-        if (FG[i]) { sfx.gold(); burst(FX[i], 0.8, FZ[i], 0xffd54f, 6, 4, 6); }
-        else { sfx.eat(); burst(FX[i], 0.8, FZ[i], FC[i], 2, 3, 5); }
+        s.statEaten++;
+        if (FG[i]) { s.statGold++; sfx.gold(); burst(FX[i], 0.8, FZ[i], 0xffd54f, 6, 4, 6); }
+        else { sfx.eat(s.combo); burst(FX[i], 0.8, FZ[i], FC[i], 2, 3, 5); }
       }
     } else {
       const pull = Math.min(1, (magnet ? 16 : 9) * lastDt);
@@ -1043,8 +1118,14 @@ function collisions() {
         if (dist2(A.x, A.z, B.x, B.z) > reach * reach) continue;
         const hh = (A.r + B.r) * 0.72;
         if (dist2(A.x, A.z, B.x, B.z) < hh * hh) {
-          if (B.shieldT > 0) { A.die(B); }
-          else if (A.score <= B.score + 0.5) A.die(B);
+          if (B.shieldT > 0) A.die(B);
+          else {
+            const diff = A.score - B.score;
+            if (diff <= 0.5) {
+              if (diff >= -0.5) { if (Math.random() < 0.5) A.die(B); else B.die(A); }
+              else A.die(B);
+            }
+          }
           break;
         }
         const rr = (B.r * 0.92 + A.r * 0.5) * (B.r * 0.92 + A.r * 0.5);
@@ -1083,6 +1164,7 @@ function addFeed(text, hex) {
 }
 
 const boardList = $('boardList');
+let lastBoardHtml = '';
 function rankOf(s) {
   let r = 1;
   for (const o of snakes) if (o !== s && o.alive && o.score > s.score) r++;
@@ -1102,6 +1184,7 @@ function updateHUD(dt) {
     $('hudLen').textContent = Math.floor(player.segs);
     $('hudKills').textContent = player.kills;
     $('hudRank').textContent = player.alive ? '#' + rank : '-';
+    if (rank <= 3) player.reachedTop3 = true;
     if (player.alive) {
       const sc = player.score;
       if (sc >= 100) unlockAch('s100');
@@ -1129,7 +1212,7 @@ function updateHUD(dt) {
   if (player && player.alive && rank > 8) {
     html += `<li class="me"><span class="rk">${rank}</span><span>${player.name}</span><span>${Math.floor(player.score)}</span></li>`;
   }
-  boardList.innerHTML = html;
+  if (html !== lastBoardHtml) { boardList.innerHTML = html; lastBoardHtml = html; }
   const combo = $('comboTag');
   if (player && player.alive && player.combo >= 3) {
     combo.textContent = `连击 ×${player.combo}`;
@@ -1140,13 +1223,18 @@ function updateHUD(dt) {
     feedBox.classList.remove('comboShift');
   }
   if (player && player.alive) {
+    checkTasks(player);
+    renderTasks(player);
     let chips = '';
     for (const k of BUFF_KEYS) {
       const t = player[k + 'T'];
       if (t > 0) chips += `<div class="chip"><i style="background:#${new THREE.Color(BUFF_DEFS[k].hex).getHexString()}"></i>${BUFF_DEFS[k].name}<small>${t.toFixed(0)}s</small></div>`;
     }
     buffBar.innerHTML = chips;
-  } else buffBar.innerHTML = '';
+  } else {
+    buffBar.innerHTML = '';
+    renderTasks(null);
+  }
 }
 
 function drawMinimap() {
@@ -1272,7 +1360,9 @@ function startRun(name, hex, pattern) {
   snakes.push(player);
   player.attachHead();
   player.score = 10;
+  player.tasks = makeTasks();
   player.spawnAt(x, z);
+  renderTasks(player);
   phase = 'play';
   nextChordT = 0;
   $('menu').classList.add('hidden');
@@ -1380,8 +1470,12 @@ function update(dt) {
       const bob = (gold ? 0.62 : 0.42) + Math.sin(gameTime * 2.4 + FPH[i]) * 0.13;
       const sc = FR[i] * (1 + Math.sin(gameTime * 3.1 + FPH[i]) * 0.08);
       M.compose(V3.set(FX[i], bob, FZ[i]), Q0.identity(), S3.set(sc, sc, sc));
-    } else M.makeScale(0, 0, 0);
-    foodMesh.setMatrixAt(i, M);
+      foodMesh.setMatrixAt(i, M);
+      foodPrev[i] = 1;
+    } else if (foodPrev[i]) {
+      foodMesh.setMatrixAt(i, ZERO_M);
+      foodPrev[i] = 0;
+    }
   }
   foodMesh.instanceMatrix.needsUpdate = true;
   updateParts(dt);
@@ -1499,9 +1593,20 @@ window.__game = {
     if (!player || !player.alive) return 'no player';
     const before = [player.x, player.z];
     teleportSnake(player, portals[1]);
-    return { moved: Math.hypot(player.x - before[0], player.z - before[1]) > 10, cd: player.portalCD };
+    return { moved: Math.hypot(player.x - before[0], player.z - before[1]) > 10, cd: player.portalCD, shield: +player.shield.toFixed(2) };
   },
   triggerEventNow(kind) { triggerEvent(kind); return { rainT, frenzyT, boss: boss ? boss.alive : false }; },
+  tasks() {
+    if (!player || !player.tasks) return null;
+    return player.tasks.map(t => ({ id: t.id, n: t.n, done: t.done, cur: Math.floor(Math.min(t.get(player), t.n)) }));
+  },
+  completeAllTasksForTest() {
+    if (!player || !player.tasks) return 'no tasks';
+    player.tasks.forEach(t => { t.done = false; });
+    const getters = { eat: p => p.statEaten, kill: p => p.kills, score: p => p.score, boost: p => p.boostTotal, portal: p => p.portalCount, buff: p => p.statBuffs, gold: p => p.statGold, top3: p => p.reachedTop3 ? 1 : 0, crown: p => p.crownTime, survive: p => p.lifeTime };
+    player.tasks.forEach(t => { t.get = getters[t.id] || (p => p.statEaten); t.n = Math.max(0, Math.floor(t.get(player))); });
+    return player.tasks.map(t => t.id);
+  },
   give(kind) { if (player && player.alive) grantBuff(player, kind); return player ? { [kind + 'T']: player[kind + 'T'] } : null; },
   achList() { return [...achUnlocked]; },
   bench(n) {
@@ -1516,7 +1621,8 @@ window.__game = {
       top: alive.slice(0, 5).map(s => ({ n: s.name, s: Math.floor(s.score), k: s.kills })),
       player: player ? { s: Math.floor(player.score), k: player.kills, alive: player.alive, segs: player.segs, combo: player.combo, buffs: BUFF_KEYS.filter(k => player[k + 'T'] > 0), crown: player.crown.visible, crownTime: +player.crownTime.toFixed(1), portals: player.portalCount } : null,
       foods: foodAliveCount, buffsOn: buffs.length,
-      events: { rain: +rainT.toFixed(1), frenzy: +frenzyT.toFixed(1), boss: boss ? boss.alive : false }
+      events: { rain: +rainT.toFixed(1), frenzy: +frenzyT.toFixed(1), boss: boss ? boss.alive : false },
+      tasks: player && player.tasks ? player.tasks.map(t => ({ id: t.id, done: t.done })) : null
     };
   }
 };
