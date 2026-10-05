@@ -56,8 +56,8 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:"Segoe UI","Microso
 #killfeed.comboShift{top:170px}
 .feedItem{background:rgba(255,255,255,.9);color:#5a7a52;font-size:12px;padding:4px 10px;border-radius:999px;animation:fadeout 6s forwards}
 @keyframes fadeout{0%{opacity:0;transform:translateX(-20px)}8%{opacity:1;transform:none}80%{opacity:1}100%{opacity:0}}
-#minimap{position:absolute;bottom:14px;left:14px;border-radius:50%;box-shadow:0 4px 14px rgba(120,180,90,.25);background:rgba(255,255,255,.78)}
-#boostBtn{position:absolute;bottom:26px;right:22px;width:88px;height:88px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#ffc067,#ff8f2e);color:#fff;font-size:19px;font-weight:900;letter-spacing:2px;display:flex;align-items:center;justify-content:center;box-shadow:0 6px 0 #d4690a,0 10px 20px rgba(255,150,40,.4);pointer-events:auto}
+#minimap{position:absolute;bottom:14px;left:14px;bottom:calc(14px + env(safe-area-inset-bottom));border-radius:50%;box-shadow:0 4px 14px rgba(120,180,90,.25);background:rgba(255,255,255,.78)}
+#boostBtn{position:absolute;bottom:26px;right:22px;bottom:calc(26px + env(safe-area-inset-bottom));right:calc(22px + env(safe-area-inset-right));width:88px;height:88px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#ffc067,#ff8f2e);color:#fff;font-size:19px;font-weight:900;letter-spacing:2px;display:flex;align-items:center;justify-content:center;box-shadow:0 6px 0 #d4690a,0 10px 20px rgba(255,150,40,.4);pointer-events:auto}
 #boostBtn.on{transform:scale(.92);filter:brightness(1.15)}
 #topBtns{position:absolute;top:12px;left:50%;transform:translateX(-50%);display:flex;gap:8px}
 .hudBtn{background:rgba(255,255,255,.9);color:#5a7a52;border:none;font-size:13px;padding:6px 14px;border-radius:999px;pointer-events:auto;cursor:pointer;box-shadow:0 3px 10px rgba(120,180,90,.2)}
@@ -93,7 +93,7 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:"Segoe UI","Microso
   .skin{width:27px;height:27px}
   .hudBtn{font-size:12px;padding:5px 11px}
   #toastBox{top:56px;width:92vw}
-  #topBtns{top:auto;bottom:30px;left:50%;transform:translateX(-50%)}
+  #topBtns{top:auto;bottom:30px;bottom:calc(30px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%)}
   .toast{font-size:13px;padding:7px 16px}
 }
 @media (pointer:fine){#boostBtn{display:none}}
@@ -1388,6 +1388,7 @@ function updateHUD(dt) {
   }
 }
 
+let mmTick = 0;
 function drawMinimap() {
   const W = minimapC.width, cx = W / 2, k = (W / 2 - 5) / ARENA_R;
   mmx.clearRect(0, 0, W, W);
@@ -1673,7 +1674,7 @@ function update(dt) {
   updateParts(dt);
   for (const s of snakes) s.syncMeshes(dt);
   updateHUD(dt);
-  drawMinimap();
+  if ((mmTick = (mmTick + 1) & 1) === 0) drawMinimap();
   const warn = $('borderWarn');
   if (player && player.alive) {
     const dc = Math.hypot(player.x, player.z);
@@ -1795,6 +1796,24 @@ window.__game = {
   triggerEventNow(kind) { triggerEvent(kind); return { rainT, frenzyT, boss: boss ? boss.alive : false }; },
   stormInfo() { return { phase: stormPhase, R: Math.floor(stormR), outside: player ? Math.hypot(player.x, player.z) > stormR : false, stormTime: player ? +player.stormTime.toFixed(1) : 0 }; },
   stormStartNow() { stormPhase = 'shrink'; stormR = 80; return { R: stormR }; },
+  soakRuns(n) {
+    const bad = [];
+    for (let r = 0; r < n; r++) {
+      startRun('soak' + r, PALETTE[r % PALETTE.length], 1 + (r % 4));
+      for (let i = 0; i < 300; i++) update(1 / 60);
+      if (player && player.alive) player.die(null);
+      for (let i = 0; i < 12; i++) update(1 / 60);
+      const corpses = snakes.filter(s => !s.alive && !s.isPlayer).length;
+      if (corpses > 0) bad.push('corpses:' + corpses);
+      if (aiCount + respawnQueue.length !== AI_N) bad.push('aicount:' + aiCount + '+' + respawnQueue.length);
+      if (stormPhase !== 'idle' || stormR !== ARENA_R) bad.push('storm:' + stormPhase + ':' + Math.floor(stormR));
+      if (!Number.isFinite(gameTime) || gameTime > 10) bad.push('time:' + Math.floor(gameTime));
+      const foods = foodAliveCount;
+      if (foods < 300 || foods > FOOD_CAP) bad.push('food:' + foods);
+    }
+    startRun('回归', PALETTE[6], 1);
+    return { runs: n, bad, badCount: bad.length, aiCount };
+  },
   soak(n) {
     const bad = [];
     const t0 = gameTime;
