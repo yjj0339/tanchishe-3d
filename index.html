@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>贪吃蛇大作战 3D · 巨蛇修罗场</title>
+<title>贪吃蛇大作战 3D · 幻彩大陆</title>
 <link rel="icon" href="data:,">
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -66,6 +66,8 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:"Segoe UI","Microso
 .toast small{display:block;font-size:11px;color:#a1887f;font-weight:400;text-align:center}
 @keyframes toastIn{0%{opacity:0;transform:translateY(-18px)}6%{opacity:1;transform:none}85%{opacity:1}100%{opacity:0;transform:translateY(-8px)}}
 #borderWarn{position:fixed;inset:0;pointer-events:none;z-index:15;box-shadow:inset 0 0 120px rgba(255,60,40,0);transition:box-shadow .25s}
+#flashFx{position:fixed;inset:0;pointer-events:none;z-index:16;opacity:0;transition:opacity .45s;background:radial-gradient(ellipse at 50% 40%,rgba(233,224,255,.95),rgba(179,157,219,.5))}
+#playHint{position:fixed;bottom:calc(120px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);z-index:26;background:rgba(255,255,255,.94);color:#4a6b42;font-size:14px;font-weight:700;letter-spacing:1px;padding:10px 24px;border-radius:999px;box-shadow:0 6px 22px rgba(120,180,90,.35);opacity:0;transition:opacity .6s;pointer-events:none}
 #deathScreen{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:35;background:rgba(255,255,255,.55)}
 #deathScreen .card{animation:pop .4s}
 @keyframes pop{0%{transform:scale(.7);opacity:0}100%{transform:scale(1);opacity:1}}
@@ -102,10 +104,12 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:"Segoe UI","Microso
 <body>
 <canvas id="c3d"></canvas>
 <div id="borderWarn"></div>
+<div id="flashFx"></div>
+<div id="playHint">移动鼠标 / 手指转向 · 按住加速冲刺 · 撞别人身体即死</div>
 <div id="menu">
   <div class="card">
     <h1>贪吃蛇大作战</h1>
-    <div class="sub">3D 巨蛇修罗场 · 二十蛇混战 · 道具 + 成就 + 随机事件</div>
+    <div class="sub">5.0 幻彩大陆 · 二十蛇混战 · 风暴缩圈 · 昼夜六境</div>
     <input id="nameInput" maxlength="8" placeholder="起个响亮的名字" value="无名小蛇">
     <div class="rowLabel">皮 肤 颜 色</div>
     <div id="skinRow"></div>
@@ -127,6 +131,7 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:"Segoe UI","Microso
       <span><i style="background:#f48fb1"></i>双倍狂欢</span>
       <span><i style="background:#ffc107"></i>蛇王降临·击杀有赏</span>
       <span><i style="background:#9575cd"></i>风暴缩圈</span>
+      <span><i style="background:#ffffff;border:1px solid #ddd"></i>彩虹星·30分光柱</span>
     </div>
     <button id="playBtn" class="bigBtn">开 战</button>
     <div class="ctrl-help">
@@ -202,13 +207,48 @@ addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; cam
 
 (function sky() {
   const c = document.createElement('canvas'); c.width = 2; c.height = 256;
-  const g = c.getContext('2d'); const gr = g.createLinearGradient(0, 0, 0, 256);
+  const g = c.getContext('2d');
+  const gr = g.createLinearGradient(0, 0, 0, 256);
   gr.addColorStop(0, '#a8d8ff'); gr.addColorStop(0.5, '#d6efff'); gr.addColorStop(1, '#fbfeff');
   g.fillStyle = gr; g.fillRect(0, 0, 2, 256);
   const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
   scene.background = tex;
+  window.__sky = { canvas: c, ctx: g, tex };
 })();
-scene.add(new THREE.HemisphereLight(0xffffff, 0xdff0d0, 1.05));
+const DAYCYCLE = [
+  { top: '#a8d8ff', bot: '#fbfeff', fog: 0xf2faff, sun: 0xfff8e8, sunI: 1.4, hemi: 1.05, tint: 0xffffff },
+  { top: '#ffc9a3', bot: '#ffe9d6', fog: 0xffe7d4, sun: 0xffd0a0, sunI: 1.1, hemi: 0.95, tint: 0xffe8d8 },
+  { top: '#8fa8d8', bot: '#dce6f8', fog: 0xdfe8f8, sun: 0xcdd8ff, sunI: 0.75, hemi: 0.8, tint: 0xdde4f2 },
+  { top: '#ffd2c2', bot: '#fff0e2', fog: 0xfdeade, sun: 0xffcdb0, sunI: 1.0, hemi: 0.95, tint: 0xffe4da }
+];
+const _skyTop = new THREE.Color(), _skyBot = new THREE.Color(), _cA = new THREE.Color(), _cB = new THREE.Color();
+let skyRedrawT = 0;
+function applyDayNight(dt) {
+  const ph = (gameTime % 240) / 240 * 4;
+  const i = Math.floor(ph) % 4, f = ph - Math.floor(ph);
+  const A = DAYCYCLE[i], B = DAYCYCLE[(i + 1) % 4];
+  _skyTop.set(A.top).lerp(_cB.set(B.top), f);
+  _skyBot.set(A.bot).lerp(_cB.set(B.bot), f);
+  scene.fog.color.set(A.fog).lerp(_cB.set(B.fog), f);
+  sun.color.set(A.sun).lerp(_cB.set(B.sun), f);
+  sun.intensity = A.sunI + (B.sunI - A.sunI) * f;
+  hemiLight.intensity = A.hemi + (B.hemi - A.hemi) * f;
+  const sa = ph / 4 * TAU;
+  sun.position.set(Math.cos(sa) * 150, 80 + Math.sin(sa) * 55, Math.sin(sa) * 100 + 30);
+  skyRedrawT -= dt;
+  if (skyRedrawT <= 0) {
+    skyRedrawT = 2;
+    const g = window.__sky.ctx;
+    const gr = g.createLinearGradient(0, 0, 0, 256);
+    gr.addColorStop(0, '#' + _skyTop.getHexString());
+    gr.addColorStop(0.5, '#' + _skyTop.clone().lerp(_skyBot, 0.5).getHexString());
+    gr.addColorStop(1, '#' + _skyBot.getHexString());
+    g.fillStyle = gr; g.fillRect(0, 0, 2, 256);
+    window.__sky.tex.needsUpdate = true;
+  }
+}
+const hemiLight = new THREE.HemisphereLight(0xffffff, 0xdff0d0, 1.05);
+scene.add(hemiLight);
 const sun = new THREE.DirectionalLight(0xfff8e8, 1.4);
 sun.position.set(90, 140, 50);
 scene.add(sun);
@@ -238,17 +278,50 @@ function mergeGeos(list) {
 const M = new THREE.Matrix4(), Q0 = new THREE.Quaternion(), V3 = new THREE.Vector3(), S3 = new THREE.Vector3(), C1 = new THREE.Color();
 const UP = new THREE.Vector3(0, 1, 0);
 
+const BIOMES = [
+  { a: '#fdeef4', b: '#f9dde9', name: '樱花' },
+  { a: '#e6f7e4', b: '#d6f0d2', name: '薄荷' },
+  { a: '#e3f2fd', b: '#d0e9fb', name: '晴空' },
+  { a: '#fdf6de', b: '#f9eec2', name: '奶油' },
+  { a: '#f0e8fb', b: '#e6d9f7', name: '薰衣草' },
+  { a: '#fdeee2', b: '#f9e2cf', name: '蜜桃' }
+];
+function sectorOfAngle(a) { return Math.floor(((a + Math.PI) / TAU) * 6) % 6; }
+let groundMat = null;
 (function ground() {
-  const c = document.createElement('canvas'); c.width = c.height = 512;
+  const SZ = 2048, C = SZ / 2, PXU = SZ / ((ARENA_R + 110) * 2);
+  const c = document.createElement('canvas'); c.width = c.height = SZ;
   const g = c.getContext('2d');
-  for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++) { g.fillStyle = (x + y) % 2 ? '#e9f7d8' : '#def2c8'; g.fillRect(x * 64, y * 64, 64, 64); }
-  g.strokeStyle = 'rgba(255,255,255,0.5)'; g.lineWidth = 2;
-  for (let i = 0; i <= 8; i++) { g.beginPath(); g.moveTo(i * 64, 0); g.lineTo(i * 64, 512); g.stroke(); g.beginPath(); g.moveTo(0, i * 64); g.lineTo(512, i * 64); g.stroke(); }
+  for (let s = 0; s < 6; s++) {
+    const bio = BIOMES[s];
+    const a0 = s / 6 * TAU - Math.PI, a1 = (s + 1) / 6 * TAU - Math.PI;
+    g.fillStyle = bio.a;
+    g.beginPath(); g.moveTo(C, C); g.arc(C, C, C, a0, a1); g.closePath(); g.fill();
+    g.fillStyle = bio.b;
+    const cells = 10;
+    for (let ri = 0; ri < cells; ri++) {
+      const r0 = ri / cells * C, r1 = (ri + 1) / cells * C;
+      const steps = Math.max(3, Math.ceil((a1 - a0) * r1 / (C / cells)));
+      for (let ci = 0; ci < steps; ci++) {
+        if ((ri + ci) % 2) continue;
+        const b0 = a0 + (a1 - a0) * ci / steps, b1 = a0 + (a1 - a0) * (ci + 1) / steps;
+        g.beginPath(); g.moveTo(C, C);
+        g.arc(C, C, r1, b0, b1); g.arc(C, C, r0, b1, b0, true);
+        g.closePath(); g.fill();
+      }
+    }
+  }
+  g.strokeStyle = 'rgba(255,255,255,0.5)'; g.lineWidth = 3;
+  for (let s = 0; s < 6; s++) {
+    const a = s / 6 * TAU - Math.PI;
+    g.beginPath(); g.moveTo(C, C); g.lineTo(C + Math.cos(a) * C, C + Math.sin(a) * C); g.stroke();
+  }
+  g.beginPath(); g.arc(C, C, ARENA_R * PXU, 0, TAU); g.stroke();
   const tex = new THREE.CanvasTexture(c);
-  tex.wrapS = tex.wrapT = THREE.RepeatWrapping; tex.repeat.set(36, 36);
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
-  const m = new THREE.Mesh(new THREE.CircleGeometry(ARENA_R + 110, 72), new THREE.MeshLambertMaterial({ map: tex }));
+  groundMat = new THREE.MeshLambertMaterial({ map: tex });
+  const m = new THREE.Mesh(new THREE.CircleGeometry(ARENA_R + 110, 96), groundMat);
   m.rotation.x = -Math.PI / 2; m.updateMatrix(); m.matrixAutoUpdate = false; scene.add(m);
 })();
 (function boundary() {
@@ -265,21 +338,65 @@ const UP = new THREE.Vector3(0, 1, 0);
   pil.matrixAutoUpdate = false;
   scene.add(pil);
 })();
-(function trees() {
+(function decorations() {
   const parts = [];
-  for (let i = 0; i < 34; i++) {
-    const a = rand(0, TAU), d = rand(ARENA_R + 12, ARENA_R + 80), x = Math.cos(a) * d, z = Math.sin(a) * d;
-    const s = rand(0.8, 1.8), pink = Math.random() < 0.3;
-    parts.push(coloredGeo(new THREE.CylinderGeometry(0.22, 0.34, 1.3, 6), 0xb98c62, M.identity().makeTranslation(x, 0.6 * s, z).scale(S3.set(s, s, s))));
-    const base = pink ? 0xffc9de : 0x9fdf8a;
-    for (let j = 0; j < 3; j++) {
-      const r = (1.15 - j * 0.28) * s, y = (1.5 + j * 0.85) * s;
-      parts.push(coloredGeo(new THREE.SphereGeometry(r, 9, 7), j === 0 ? base : (pink ? 0xffdff0 : 0xb2e69e), M.identity().makeTranslation(x, y, z)));
+  const put = (geo, hex, x, y, z) => parts.push(coloredGeo(geo, hex, M.identity().makeTranslation(x, y, z)));
+  for (let i = 0; i < 44; i++) {
+    const a = rand(0, TAU), d = rand(ARENA_R + 8, ARENA_R + 78);
+    const x = Math.cos(a) * d, z = Math.sin(a) * d;
+    const s = rand(0.8, 1.8), sec = sectorOfAngle(a);
+    if (sec === 0 || sec === 3) {
+      const pink = sec === 0;
+      put(new THREE.CylinderGeometry(0.22, 0.34, 1.3, 6), 0xb98c62, x, 0.6 * s, z);
+      const base = pink ? 0xffc9de : 0x9fdf8a;
+      for (let j = 0; j < 3; j++) {
+        const r = (1.15 - j * 0.28) * s, y = (1.5 + j * 0.85) * s;
+        put(new THREE.SphereGeometry(r, 9, 7), j === 0 ? base : (pink ? 0xffdff0 : 0xb2e69e), x, y, z);
+      }
+    } else if (sec === 1) {
+      const n = randi(3, 5);
+      for (let j = 0; j < n; j++) {
+        const ox = x + rand(-1.6, 1.6), oz = z + rand(-1.6, 1.6), h = rand(0.9, 2.4) * s;
+        put(new THREE.OctahedronGeometry(rand(0.5, 0.9)), Math.random() < 0.5 ? 0x90caf9 : 0xce93d8, ox, h * 0.55, oz);
+      }
+    } else if (sec === 2) {
+      const n = randi(2, 4);
+      for (let j = 0; j < n; j++) {
+        const ox = x + rand(-1.4, 1.4), oz = z + rand(-1.4, 1.4), h = rand(0.5, 1.1) * s, r = rand(0.35, 0.6) * s;
+        put(new THREE.CylinderGeometry(0.14, 0.2, h, 6), 0xfff3e0, ox, h / 2, oz);
+        put(new THREE.SphereGeometry(r, 9, 7), Math.random() < 0.5 ? 0xef9a9a : 0xa5d6a7, ox, h, oz);
+      }
+    } else if (sec === 4) {
+      const n = randi(2, 4);
+      for (let j = 0; j < n; j++) {
+        const ox = x + rand(-1.8, 1.8), oz = z + rand(-1.8, 1.8), r = rand(0.5, 1.3) * s;
+        put(new THREE.IcosahedronGeometry(r, 0), Math.random() < 0.5 ? 0xb0bec5 : 0xa7c0cd, ox, r * 0.4, oz);
+      }
+    } else {
+      let tx = x, tz = z, lean = rand(-0.12, 0.12);
+      for (let j = 0; j < 3; j++) {
+        put(new THREE.CylinderGeometry(0.2 - j * 0.04, 0.26 - j * 0.04, 1.2, 6), 0x9b7653, tx, 0.6 + j * 1.15, tz);
+        tx += lean; tz += lean * 0.6;
+      }
+      for (let j = 0; j < 5; j++) {
+        const la = j / 5 * TAU;
+        put(new THREE.ConeGeometry(0.32, 1.7, 5), 0x7ec87e, tx + Math.cos(la) * 0.5, 3.6 + s * 0.4, tz + Math.sin(la) * 0.5);
+      }
     }
   }
-  const treeMesh = new THREE.Mesh(mergeGeos(parts), new THREE.MeshLambertMaterial({ vertexColors: true }));
-  treeMesh.matrixAutoUpdate = false;
-  scene.add(treeMesh);
+  const decoMesh = new THREE.Mesh(mergeGeos(parts), new THREE.MeshLambertMaterial({ vertexColors: true }));
+  decoMesh.matrixAutoUpdate = false;
+  scene.add(decoMesh);
+  const flowerParts = [];
+  for (let i = 0; i < 46; i++) {
+    const a = rand(0, TAU), d = rand(24, ARENA_R - 18);
+    const x = Math.cos(a) * d, z = Math.sin(a) * d, h = rand(0.3, 0.55);
+    flowerParts.push(coloredGeo(new THREE.CylinderGeometry(0.035, 0.035, h, 4), 0x81c784, M.identity().makeTranslation(x, h / 2, z)));
+    flowerParts.push(coloredGeo(new THREE.SphereGeometry(0.14, 6, 5), CANDY[randi(0, CANDY.length - 1)], M.identity().makeTranslation(x, h, z)));
+  }
+  const flowerMesh = new THREE.Mesh(mergeGeos(flowerParts), new THREE.MeshLambertMaterial({ vertexColors: true }));
+  flowerMesh.matrixAutoUpdate = false;
+  scene.add(flowerMesh);
 })();
 const cloudGroup = new THREE.Group();
 (function clouds() {
@@ -316,7 +433,7 @@ function popRing(x, z, hex, size) {
   r.mesh.visible = true; r.mesh.position.set(x, 0.5, z); r.mesh.material.color.setHex(hex);
 }
 
-const PN = 240;
+const PN = 420;
 const partMesh = new THREE.InstancedMesh(new THREE.TetrahedronGeometry(0.24), new THREE.MeshBasicMaterial(), PN);
 partMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
 partMesh.frustumCulled = false;
@@ -370,14 +487,30 @@ const sfx = {
   boost: () => beep(220, 700, 0.14, 'sawtooth', 0.05),
   pickup: () => { beep(523, 784, 0.1, 'sine', 0.1); beep(784, 1046, 0.14, 'sine', 0.1, 0.1); },
   mini: () => beep(700, 180, 0.3, 'triangle', 0.12),
+  star: () => { beep(660, 990, 0.12, 'triangle', 0.12); beep(880, 1320, 0.16, 'triangle', 0.12, 0.12); beep(1320, 1760, 0.22, 'triangle', 0.12, 0.26); },
   storm: () => beep(170, 55, 0.9, 'sawtooth', 0.13),
+  thunder: () => { beep(85, 40, 0.6, 'sawtooth', 0.15); beep(55, 28, 0.9, 'triangle', 0.12, 0.06); },
   ach: () => { beep(784, 784, 0.1, 'triangle', 0.09); beep(988, 988, 0.1, 'triangle', 0.09, 0.11); beep(1318, 1318, 0.18, 'triangle', 0.1, 0.22); },
   click: () => beep(760, 760, 0.05, 'sine', 0.08)
 };
 const CHORDS = [[262, 330, 392], [220, 262, 330], [175, 220, 262], [196, 247, 294]];
-let chordI = 0, nextChordT = 0;
+const PENTA = [523.25, 587.33, 659.25, 783.99, 880];
+let chordI = 0, nextChordT = 0, nextNoteT = 0, noteI = 2;
 function musicTick() {
-  if (muted || phase !== 'play' || gameTime < nextChordT) return;
+  if (muted || phase !== 'play') return;
+  if (gameTime >= nextNoteT) {
+    nextNoteT = Math.max(nextNoteT + 0.9, gameTime);
+    try {
+      const ctx = ac();
+      noteI = clamp(noteI + randi(-2, 2), 0, 4);
+      const t0 = ctx.currentTime;
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = 'triangle'; o.frequency.value = PENTA[noteI];
+      g.gain.setValueAtTime(0.0001, t0); g.gain.linearRampToValueAtTime(0.02, t0 + 0.04); g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.85);
+      o.connect(g); g.connect(ctx.destination); o.start(t0); o.stop(t0 + 0.9);
+    } catch (e) { }
+  }
+  if (gameTime < nextChordT) return;
   nextChordT = gameTime + 3.6;
   try {
     const ctx = ac(), ch = CHORDS[chordI = (chordI + 1) % CHORDS.length];
@@ -396,6 +529,7 @@ const FX = new Float32Array(FOOD_CAP), FZ = new Float32Array(FOOD_CAP), FV = new
 const FPH = new Float32Array(FOOD_CAP), FR = new Float32Array(FOOD_CAP), FG = new Uint8Array(FOOD_CAP);
 const foodAlive = new Uint8Array(FOOD_CAP), foodPrev = new Uint8Array(FOOD_CAP), freeSlots = [];
 const ZERO_M = new THREE.Matrix4().makeScale(0, 0, 0);
+let starColorDirty = false;
 const GH = 28, GS = 20, GOFF = 280, GC = GH * GH;
 const cellCount = new Uint16Array(GC), cellStart = new Uint32Array(GC + 1), cellCursor = new Uint32Array(GC), cellItems = new Uint16Array(FOOD_CAP);
 const cellStartView = cellStart.subarray(0, GC);
@@ -417,20 +551,22 @@ for (let i = FOOD_CAP - 1; i >= FOOD_N; i--) freeSlots.push(i);
 const foodMesh = new THREE.InstancedMesh(new THREE.SphereGeometry(1, 10, 8), new THREE.MeshLambertMaterial({ emissive: 0x777777 }), FOOD_CAP);
 foodMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
 scene.add(foodMesh);
-function spawnFood(x, z, v, hex, gold) {
-  if (!freeSlots.length) return;
+function spawnFood(x, z, v, hex, kind) {
+  if (!freeSlots.length) return -1;
   const i = freeSlots.pop();
-  FX[i] = x; FZ[i] = z; FV[i] = v; FC[i] = hex; FG[i] = gold ? 1 : 0; FPH[i] = rand(0, TAU); FR[i] = (gold ? 0.55 : 0.3) + v * 0.08;
+  FX[i] = x; FZ[i] = z; FV[i] = v; FC[i] = hex; FG[i] = kind || 0; FPH[i] = rand(0, TAU);
+  FR[i] = kind === 2 ? 1.05 : (kind === 1 ? 0.55 : 0.3) + v * 0.08;
   if (!foodAlive[i]) { foodAlive[i] = 1; foodAliveCount++; }
   foodMesh.setColorAt(i, C1.setHex(hex));
   if (foodMesh.instanceColor) foodMesh.instanceColor.needsUpdate = true;
+  return i;
 }
 function killFood(i) { foodAlive[i] = 0; foodAliveCount--; freeSlots.push(i); }
 function spawnRandomFood() {
   const span = stormActive() ? Math.min(ARENA_R - 8, stormR * 0.92) : ARENA_R - 8;
   const a = rand(0, TAU), d = Math.sqrt(Math.random()) * span;
   const roll = Math.random();
-  if (roll < 0.015) spawnFood(Math.cos(a) * d, Math.sin(a) * d, 12, 0xffd54f, true);
+  if (roll < 0.015) spawnFood(Math.cos(a) * d, Math.sin(a) * d, 12, 0xffd54f, 1);
   else if (roll < 0.74) spawnFood(Math.cos(a) * d, Math.sin(a) * d, 1, CANDY[randi(0, CANDY.length - 1)]);
   else if (roll < 0.96) spawnFood(Math.cos(a) * d, Math.sin(a) * d, 2, CANDY[randi(0, CANDY.length - 1)]);
   else spawnFood(Math.cos(a) * d, Math.sin(a) * d, 5, 0xb39ddb);
@@ -675,7 +811,38 @@ function spawnBoss() {
   boss.spawnAt(x, z);
 }
 
-let eventT = 30, frenzyT = 0, rainT = 0, rainAcc = 0, slowmoT = 0;
+let eventT = 30, frenzyT = 0, rainT = 0, rainAcc = 0, slowmoT = 0, boltT = 5, crownSparkT = 0;
+
+const starBeacon = new THREE.Mesh(
+  new THREE.CylinderGeometry(2.4, 2.4, 90, 14, 1, true),
+  new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.15, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending }));
+starBeacon.visible = false;
+scene.add(starBeacon);
+let starIdx = -1, starT = 12, starLife = 0;
+function spawnStar() {
+  if (starIdx >= 0 && foodAlive[starIdx]) return null;
+  const span = stormActive() ? Math.min(ARENA_R * 0.92, stormR * 0.9) : ARENA_R - 12;
+  const a = rand(0, TAU), d = rand(span * 0.3, span);
+  starIdx = spawnFood(Math.cos(a) * d, Math.sin(a) * d, 30, 0xffffff, 2);
+  starLife = 25;
+  return starIdx >= 0 ? { x: FX[starIdx], z: FZ[starIdx] } : null;
+}
+function starTick(dt) {
+  if (starIdx >= 0 && foodAlive[starIdx]) {
+    starLife -= dt;
+    const blink = starLife < 4 ? Math.floor(starLife * 4) % 2 === 0 : true;
+    starBeacon.visible = blink;
+    starBeacon.position.set(FX[starIdx], 45, FZ[starIdx]);
+    starBeacon.material.color.setHSL((gameTime * 0.45) % 1, 0.75, 0.72);
+    starBeacon.material.opacity = 0.12 + Math.sin(gameTime * 4) * 0.05;
+    if (starLife <= 0) { killFood(starIdx); starIdx = -1; starBeacon.visible = false; }
+  } else {
+    starIdx = -1;
+    starBeacon.visible = false;
+    starT -= dt;
+    if (starT <= 0) { starT = rand(22, 35); spawnStar(); }
+  }
+}
 
 const stormWall = new THREE.Mesh(
   new THREE.CylinderGeometry(1, 1, 44, 72, 1, true),
@@ -838,6 +1005,7 @@ class Snake {
     this.isBoss = false; this.isLeader = false;
     this.statEaten = 0; this.statGold = 0; this.statBuffs = 0; this.reachedTop3 = false;
     this.slowT = 0; this.stormTime = 0;
+    this.walk = 0; this.fxT = 0;
     this.tasks = null; this.taskAllBonus = false;
     this.frozenPainted = false;
     this.persona = PERSONAS[randi(0, PERSONAS.length - 1)];
@@ -931,6 +1099,7 @@ class Snake {
     if (this.a > Math.PI) this.a -= TAU; if (this.a < -Math.PI) this.a += TAU;
     this.x += Math.cos(this.a) * sp * dt;
     this.z += Math.sin(this.a) * sp * dt;
+    this.walk += sp * dt;
     this.portalCD = Math.max(0, this.portalCD - dt);
     if (this.portalCD <= 0) {
       for (let pi = 0; pi < portals.length; pi++) {
@@ -1007,10 +1176,21 @@ class Snake {
     const crownOn = this.isLeader || this.isBoss;
     this.crown.visible = crownOn;
     if (crownOn) { this.crown.rotation.y += dt * 2.2; this.crown.position.y = 1.62 + Math.sin(gameTime * 4) * 0.06; }
+    const wAmp = Math.min(this.r * 0.3, this.spacing * 0.55);
     for (let i = 0; i < this.segs; i++) {
       const taper = i > this.segs - 9 ? 1 - (i - (this.segs - 9)) / 9 * 0.68 : 1;
-      const s = this.r * (i < 2 ? 1.04 : 1) * taper;
-      M.compose(V3.set(this.sx[i], this.r * 0.92, this.sz[i]), Q0.identity(), S3.set(s, s, s));
+      let s = this.r * (i < 2 ? 1.04 : 1) * taper;
+      s *= 1 + 0.055 * Math.sin(this.walk * 0.14 - i * 0.4);
+      let px = this.sx[i], pz = this.sz[i];
+      if (i > 0) {
+        const wTaper = i < 4 ? i / 4 : (i > this.segs - 4 ? (this.segs - i) / 4 : 1);
+        const dx = px - this.sx[i - 1], dz = pz - this.sz[i - 1];
+        const len = Math.hypot(dx, dz) || 1;
+        const off = Math.sin(this.walk * 0.1 - i * 0.5) * wAmp * wTaper;
+        px += (-dz / len) * off;
+        pz += (dx / len) * off;
+      }
+      M.compose(V3.set(px, this.r * 0.92, pz), Q0.identity(), S3.set(s, s, s));
       this.body.setMatrixAt(i, M);
     }
     this.body.count = Math.max(1, Math.floor(this.segs));
@@ -1027,7 +1207,7 @@ class Snake {
       const bonus = 100 + Math.floor(this.score * 0.15);
       for (let i = 0; i < this.segs; i += 2) {
         const a = rand(0, TAU), d = rand(0, 2);
-        spawnFood(this.sx[i] + Math.cos(a) * d, this.sz[i] + Math.sin(a) * d, 4, 0xffd54f, true);
+        spawnFood(this.sx[i] + Math.cos(a) * d, this.sz[i] + Math.sin(a) * d, 4, 0xffd54f, 1);
       }
       popRing(this.x, this.z, 0xffc107, 16);
       burst(this.x, 1.4, this.z, 0xffd54f, 22, 10, 10);
@@ -1241,7 +1421,14 @@ function eatFoods(s) {
           s.updateDerived();
           if (s.isPlayer) {
             s.statEaten++;
-            if (FG[i]) { s.statGold++; sfx.gold(); burst(FX[i], 0.8, FZ[i], 0xffd54f, 6, 4, 6); }
+            if (FG[i] === 2) {
+              sfx.star();
+              burst(FX[i], 1.2, FZ[i], 0xff5252, 5, 6, 8);
+              burst(FX[i], 1.2, FZ[i], 0x40c4ff, 5, 6, 8);
+              burst(FX[i], 1.2, FZ[i], 0xffd740, 5, 6, 8);
+              popRing(FX[i], FZ[i], 0xffffff, 10);
+              addFeed('吃掉彩虹星！', 0xffffff);
+            } else if (FG[i] === 1) { s.statGold++; sfx.gold(); burst(FX[i], 0.8, FZ[i], 0xffd54f, 6, 4, 6); }
             else { sfx.eat(s.combo); burst(FX[i], 0.8, FZ[i], FC[i], 2, 3, 5); }
           }
         } else {
@@ -1396,6 +1583,11 @@ function drawMinimap() {
   mmx.beginPath(); mmx.arc(cx, cx, W / 2 - 3, 0, TAU); mmx.fill();
   mmx.strokeStyle = '#ffab91'; mmx.lineWidth = 2;
   mmx.beginPath(); mmx.arc(cx, cx, ARENA_R * k, 0, TAU); mmx.stroke();
+  if (starIdx >= 0 && foodAlive[starIdx]) {
+    mmx.fillStyle = '#fff';
+    mmx.beginPath(); mmx.arc(cx + FX[starIdx] * k, cx + FZ[starIdx] * k, 3 + Math.sin(gameTime * 6) * 1.5, 0, TAU); mmx.fill();
+    mmx.strokeStyle = '#ffd740'; mmx.lineWidth = 1.6; mmx.stroke();
+  }
   if (stormActive()) {
     mmx.strokeStyle = '#9575cd'; mmx.lineWidth = 2.5;
     mmx.setLineDash([4, 3]);
@@ -1521,9 +1713,10 @@ function startRun(name, hex, pattern) {
   respawnQueue.length = 0;
   aiCount = 0;
   gameTime = 0;
-  eventT = 30; frenzyT = 0; rainT = 0; rainAcc = 0; slowmoT = 0;
+  eventT = 30; frenzyT = 0; rainT = 0; rainAcc = 0; slowmoT = 0; boltT = 5; crownSparkT = 0;
   stormPhase = 'idle'; stormR = ARENA_R;
-  nextChordT = 0;
+  starIdx = -1; starBeacon.visible = false; starT = 12;
+  nextChordT = 0; nextNoteT = 0;
   const [x, z] = safeSpot(16);
   player = new Snake(name, hex, true, playerPattern);
   usedColors.add(hex); usedNames.add(name);
@@ -1535,6 +1728,12 @@ function startRun(name, hex, pattern) {
   renderTasks(player);
   for (let i = 0; i < AI_N; i++) spawnAI();
   phase = 'play';
+  if (!localStorage.getItem('sss3d_hinted')) {
+    localStorage.setItem('sss3d_hinted', '1');
+    const h = $('playHint');
+    h.style.opacity = 1;
+    setTimeout(() => { h.style.opacity = 0; }, 6000);
+  }
   $('menu').classList.add('hidden');
   $('hud').classList.remove('hidden');
   camState.pos.set(x - Math.cos(player.a) * 20, 20, z - Math.sin(player.a) * 20);
@@ -1561,8 +1760,20 @@ function update(dt) {
     const sdt = dt * (slowmoT > 0 ? 0.35 : 1);
     gameTime += sdt;
     cloudGroup.rotation.y += sdt * 0.004;
-    musicTick();
-    stormTick();
+  musicTick();
+  applyDayNight(sdt);
+  starTick(sdt);
+  stormTick();
+  if (stormPhase === 'shrink') {
+    boltT -= dt;
+    if (boltT <= 0) {
+      boltT = rand(4, 8);
+      const f = $('flashFx');
+      f.style.opacity = 0.32;
+      setTimeout(() => { f.style.opacity = 0; }, 130);
+      sfx.thunder();
+    }
+  }
     if (stormActive()) {
       for (const s of snakes) {
         if (!s.alive) continue;
@@ -1628,12 +1839,23 @@ function update(dt) {
     s.prevA = s.a;
     s.move(sdt);
     s.turnVel = s.turnVel * 0.8 + (angDiff(s.prevA, s.a) / sdt) * 0.2;
+    if (s.boost) {
+      s.fxT -= sdt;
+      if (s.fxT <= 0) {
+        s.fxT = 0.07;
+        burst(s.x - Math.cos(s.a) * s.r * 1.6, s.r * 0.9, s.z - Math.sin(s.a) * s.r * 1.6, s.hex, 1, 2, 2.5);
+      }
+    }
     eatFoods(s);
   }
   collisions();
   let leader = null;
   for (const s of snakes) if (s.alive && (!leader || s.score > leader.score)) leader = s;
   for (const s of snakes) s.isLeader = s === leader;
+  if (leader && leader.alive) {
+    crownSparkT -= sdt;
+    if (crownSparkT <= 0) { crownSparkT = 0.4; burst(leader.x, leader.r * 2.6, leader.z, 0xffd54f, 1, 1.5, 2.5); }
+  }
   for (let i = snakes.length - 1; i >= 0; i--) {
     const s = snakes[i];
     if (!s.alive && !s.isPlayer) {
@@ -1660,6 +1882,10 @@ function update(dt) {
   for (let i = 0; i < FOOD_CAP; i++) {
     if (foodAlive[i]) {
       const gold = FG[i];
+      if (gold === 2) {
+        foodMesh.setColorAt(i, C1.setHSL((gameTime * 0.6 + FPH[i]) % 1, 0.8, 0.62));
+        starColorDirty = true;
+      }
       const bob = (gold ? 0.62 : 0.42) + Math.sin(gameTime * 2.4 + FPH[i]) * 0.13;
       const sc = FR[i] * (1 + Math.sin(gameTime * 3.1 + FPH[i]) * 0.08);
       M.compose(V3.set(FX[i], bob, FZ[i]), Q0.identity(), S3.set(sc, sc, sc));
@@ -1670,6 +1896,7 @@ function update(dt) {
       foodPrev[i] = 0;
     }
   }
+  if (starColorDirty) { foodMesh.instanceColor.needsUpdate = true; starColorDirty = false; }
   foodMesh.instanceMatrix.needsUpdate = true;
   updateParts(dt);
   for (const s of snakes) s.syncMeshes(dt);
@@ -1796,6 +2023,8 @@ window.__game = {
   triggerEventNow(kind) { triggerEvent(kind); return { rainT, frenzyT, boss: boss ? boss.alive : false }; },
   stormInfo() { return { phase: stormPhase, R: Math.floor(stormR), outside: player ? Math.hypot(player.x, player.z) > stormR : false, stormTime: player ? +player.stormTime.toFixed(1) : 0 }; },
   stormStartNow() { stormPhase = 'shrink'; stormR = 80; return { R: stormR }; },
+  spawnStarNow() { return spawnStar() ? { x: Math.floor(FX[starIdx]), z: Math.floor(FZ[starIdx]) } : null; },
+  dayInfo() { return { seg: Math.floor((gameTime % 240) / 60), sunI: +sun.intensity.toFixed(2), fog: '#' + scene.fog.color.getHexString() }; },
   soakRuns(n) {
     const bad = [];
     for (let r = 0; r < n; r++) {
@@ -1865,6 +2094,8 @@ window.__game = {
       player: player ? { s: Math.floor(player.score), k: player.kills, alive: player.alive, segs: player.segs, combo: player.combo, buffs: BUFF_KEYS.filter(k => player[k + 'T'] > 0), crown: player.crown.visible, crownTime: +player.crownTime.toFixed(1), portals: player.portalCount } : null,
       foods: foodAliveCount, buffsOn: buffs.length,
       events: { rain: +rainT.toFixed(1), frenzy: +frenzyT.toFixed(1), boss: boss ? boss.alive : false },
+      star: starIdx >= 0 && foodAlive[starIdx] ? { x: Math.floor(FX[starIdx]), z: Math.floor(FZ[starIdx]), v: FV[starIdx] } : null,
+      day: Math.floor((gameTime % 240) / 60),
       tasks: player && player.tasks ? player.tasks.map(t => ({ id: t.id, done: t.done })) : null
     };
   }
