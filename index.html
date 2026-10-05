@@ -62,6 +62,11 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:"Segoe UI","Microso
 #topBtns{position:absolute;top:12px;left:50%;transform:translateX(-50%);display:flex;gap:8px}
 .hudBtn{background:rgba(255,255,255,.9);color:#5a7a52;border:none;font-size:13px;padding:6px 14px;border-radius:999px;pointer-events:auto;cursor:pointer;box-shadow:0 3px 10px rgba(120,180,90,.2)}
 #toastBox{position:fixed;top:64px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;gap:8px;align-items:center;z-index:28;pointer-events:none}
+#bigBanner{position:fixed;top:16%;left:50%;transform:translateX(-50%) scale(.8);z-index:27;pointer-events:none;opacity:0;background:rgba(255,255,255,.96);padding:14px 42px;border-radius:22px;text-align:center;box-shadow:0 10px 40px rgba(120,180,90,.4);border:2px solid #ffe0b2}
+#bigBanner.show{animation:bigShow 3.4s forwards}
+#bigBanner b{display:block;font-size:26px;letter-spacing:4px;color:#e65100}
+#bigBanner small{display:block;font-size:13px;color:#7d9a72;margin-top:3px}
+@keyframes bigShow{0%{opacity:0;transform:translateX(-50%) scale(.7)}8%{opacity:1;transform:translateX(-50%) scale(1.04)}14%{transform:translateX(-50%) scale(1)}82%{opacity:1}100%{opacity:0;transform:translateX(-50%) scale(1) translateY(-14px)}}
 .toast{background:rgba(255,255,255,.96);color:#5d4037;padding:9px 22px;border-radius:999px;font-size:14px;font-weight:700;box-shadow:0 6px 22px rgba(120,180,90,.35);animation:toastIn 4s forwards;border:2px solid #ffe0b2}
 .toast small{display:block;font-size:11px;color:#a1887f;font-weight:400;text-align:center}
 @keyframes toastIn{0%{opacity:0;transform:translateY(-18px)}6%{opacity:1;transform:none}85%{opacity:1}100%{opacity:0;transform:translateY(-8px)}}
@@ -115,6 +120,8 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:"Segoe UI","Microso
     <div id="skinRow"></div>
     <div class="rowLabel">皮 肤 花 纹</div>
     <div id="patRow"></div>
+    <div class="rowLabel">时 尚 帽 子</div>
+    <div id="hatRow"></div>
     <div class="rowLabel">场 上 道 具</div>
     <div id="buffLegend">
       <span><i style="background:#ab47bc"></i>磁铁吸食</span>
@@ -157,6 +164,7 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:"Segoe UI","Microso
   <div id="boostBtn">加速</div>
 </div>
 <div id="toastBox"></div>
+<div id="bigBanner"><b id="bigBannerText"></b><small id="bigBannerSub"></small></div>
 <div id="deathScreen" class="hidden">
   <div class="card">
     <h2>你被终结了！</h2>
@@ -316,6 +324,18 @@ let groundMat = null;
     const a = s / 6 * TAU - Math.PI;
     g.beginPath(); g.moveTo(C, C); g.lineTo(C + Math.cos(a) * C, C + Math.sin(a) * C); g.stroke();
   }
+  const LR = 48 * PXU;
+  const lg = g.createRadialGradient(C, C, LR * 0.2, C, C, LR);
+  lg.addColorStop(0, '#7ec3ea'); lg.addColorStop(0.75, '#a5d8f2'); lg.addColorStop(1, '#c8e9fa');
+  g.fillStyle = lg;
+  g.beginPath(); g.arc(C, C, LR, 0, TAU); g.fill();
+  g.strokeStyle = 'rgba(255,255,255,0.75)'; g.lineWidth = 6;
+  g.beginPath(); g.arc(C, C, LR, 0, TAU); g.stroke();
+  g.strokeStyle = 'rgba(255,255,255,0.35)'; g.lineWidth = 3;
+  for (let w = 0; w < 7; w++) {
+    const wa = rand(0, TAU), wr = LR * rand(0.25, 0.8);
+    g.beginPath(); g.arc(C + Math.cos(wa) * wr, C + Math.sin(wa) * wr, rand(12, 30), wa, wa + rand(1.2, 2.4)); g.stroke();
+  }
   g.beginPath(); g.arc(C, C, ARENA_R * PXU, 0, TAU); g.stroke();
   const tex = new THREE.CanvasTexture(c);
   tex.colorSpace = THREE.SRGBColorSpace;
@@ -324,6 +344,17 @@ let groundMat = null;
   const m = new THREE.Mesh(new THREE.CircleGeometry(ARENA_R + 110, 96), groundMat);
   m.rotation.x = -Math.PI / 2; m.updateMatrix(); m.matrixAutoUpdate = false; scene.add(m);
 })();
+const LAKE_R = 48;
+const waterMesh = new THREE.Mesh(new THREE.CircleGeometry(LAKE_R, 48), new THREE.MeshLambertMaterial({ color: 0x9fd8f5, transparent: true, opacity: 0.5 }));
+waterMesh.rotation.x = -Math.PI / 2; waterMesh.position.y = 0.09;
+waterMesh.updateMatrix(); waterMesh.matrixAutoUpdate = false;
+scene.add(waterMesh);
+const foamRing = new THREE.Mesh(new THREE.TorusGeometry(LAKE_R, 0.35, 6, 64), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.45 }));
+foamRing.rotation.x = -Math.PI / 2; foamRing.position.y = 0.14;
+foamRing.updateMatrix(); foamRing.matrixAutoUpdate = false;
+scene.add(foamRing);
+function inLake(x, z) { return x * x + z * z < LAKE_R * LAKE_R; }
+let lakeRippleT = 1;
 (function boundary() {
   const torus = new THREE.Mesh(new THREE.TorusGeometry(ARENA_R + 0.4, 0.55, 10, 130), new THREE.MeshBasicMaterial({ color: 0xffffff }));
   torus.rotation.x = -Math.PI / 2; torus.position.y = 0.35; torus.updateMatrix(); torus.matrixAutoUpdate = false; scene.add(torus);
@@ -797,21 +828,71 @@ function makeCrown() {
   mesh.visible = false;
   return mesh;
 }
+const HAT_NAMES = ['无', '皇冠', '礼帽', '蝴蝶结', '墨镜', '兔耳', '恶魔角', '花环'];
+const hatGeos = [null];
+(function buildHats() {
+  const mk = parts => mergeGeos(parts);
+  hatGeos[1] = crownGeoShared;
+  hatGeos[2] = mk([
+    coloredGeo(new THREE.CylinderGeometry(0.85, 0.85, 0.09, 14), 0x37474f, M.identity().makeTranslation(0, 0.04, 0)),
+    coloredGeo(new THREE.CylinderGeometry(0.48, 0.5, 0.72, 14), 0x455a64, M.identity().makeTranslation(0, 0.42, 0)),
+    coloredGeo(new THREE.CylinderGeometry(0.52, 0.52, 0.14, 14), 0xe57373, M.identity().makeTranslation(0, 0.2, 0))
+  ]);
+  hatGeos[3] = mk([
+    coloredGeo(new THREE.ConeGeometry(0.34, 0.5, 6), 0xf48fb1, M.identity().makeTranslation(-0.3, 0.35, 0).premultiply(M.identity().makeRotationZ(1.1))),
+    coloredGeo(new THREE.ConeGeometry(0.34, 0.5, 6), 0xf48fb1, M.identity().makeTranslation(0.3, 0.35, 0).premultiply(M.identity().makeRotationZ(-1.1))),
+    coloredGeo(new THREE.SphereGeometry(0.16, 8, 6), 0xec407a, M.identity().makeTranslation(0, 0.3, 0))
+  ]);
+  hatGeos[4] = mk([
+    coloredGeo(new THREE.BoxGeometry(0.3, 0.28, 1.55), 0x263238, M.identity().makeTranslation(0.5, 0.42, 0)),
+    coloredGeo(new THREE.BoxGeometry(0.34, 0.34, 0.55), 0x37474f, M.identity().makeTranslation(0.55, 0.4, -0.42)),
+    coloredGeo(new THREE.BoxGeometry(0.34, 0.34, 0.55), 0x37474f, M.identity().makeTranslation(0.55, 0.4, 0.42))
+  ]);
+  hatGeos[5] = mk([
+    coloredGeo(new THREE.CapsuleGeometry(0.14, 0.75, 4, 8), 0xffffff, M.identity().makeTranslation(-0.35, 0.85, -0.28).premultiply(M.identity().makeRotationZ(-0.16))),
+    coloredGeo(new THREE.CapsuleGeometry(0.14, 0.75, 4, 8), 0xffffff, M.identity().makeTranslation(0.35, 0.85, -0.28).premultiply(M.identity().makeRotationZ(0.16))),
+    coloredGeo(new THREE.CapsuleGeometry(0.09, 0.4, 4, 8), 0xf8bbd0, M.identity().makeTranslation(-0.37, 0.85, -0.31).premultiply(M.identity().makeRotationZ(-0.16))),
+    coloredGeo(new THREE.CapsuleGeometry(0.09, 0.4, 4, 8), 0xf8bbd0, M.identity().makeTranslation(0.37, 0.85, -0.31).premultiply(M.identity().makeRotationZ(0.16)))
+  ]);
+  hatGeos[6] = mk([
+    coloredGeo(new THREE.ConeGeometry(0.16, 0.6, 6), 0xd84315, M.identity().makeTranslation(-0.42, 0.7, 0).premultiply(M.identity().makeRotationZ(0.5))),
+    coloredGeo(new THREE.ConeGeometry(0.16, 0.6, 6), 0xd84315, M.identity().makeTranslation(0.42, 0.7, 0).premultiply(M.identity().makeRotationZ(-0.5)))
+  ]);
+  const wreath = [coloredGeo(new THREE.TorusGeometry(0.78, 0.11, 6, 18), 0x81c784, M.identity().makeRotationX(Math.PI / 2.3))];
+  for (let i = 0; i < 7; i++) {
+    const a = i / 7 * TAU;
+    wreath.push(coloredGeo(new THREE.SphereGeometry(0.13, 6, 5), CANDY[i % CANDY.length], M.identity().makeTranslation(Math.cos(a) * 0.78, Math.sin(a) * 0.33, Math.sin(a) * 0.35)));
+  }
+  hatGeos[7] = mk(wreath);
+})();
+const hatMatShared = new THREE.MeshLambertMaterial({ vertexColors: true });
+hatMatShared.userData.shared = true;
 
-let boss = null;
-function spawnBoss() {
-  if (boss && boss.alive) return;
+let bosses = [];
+function spawnBoss(rival) {
+  if (bosses.length >= 2) return null;
   const [x, z] = safeSpot(22);
-  boss = new Snake('蛇王·' + pickName(), 0xffc107, false, 2);
-  boss.isBoss = true;
-  boss.persona = { id: 'hunter', fleeR: 0.5, preyR: 3, boostP: 2, huntP: 1 };
-  snakes.push(boss);
-  boss.attachHead();
-  boss.score = 600;
-  boss.spawnAt(x, z);
+  const b = new Snake('蛇王·' + pickName(), 0xffc107, false, 2);
+  b.isBoss = true;
+  b.persona = { id: 'hunter', fleeR: 0.5, preyR: 3, boostP: 2, huntP: 1 };
+  if (rival) { b.rival = rival; rival.rival = b; }
+  snakes.push(b);
+  b.attachHead();
+  b.score = 600;
+  b.spawnAt(x, z);
+  bosses.push(b);
+  return b;
+}
+function addBigBanner(text, sub) {
+  const box = $('bigBanner');
+  $('bigBannerText').textContent = text;
+  $('bigBannerSub').textContent = sub || '';
+  box.classList.remove('show');
+  void box.offsetWidth;
+  box.classList.add('show');
 }
 
-let eventT = 30, frenzyT = 0, rainT = 0, rainAcc = 0, slowmoT = 0, boltT = 5, crownSparkT = 0;
+let eventT = 30, frenzyT = 0, rainT = 0, rainAcc = 0, slowmoT = 0, boltT = 5, crownSparkT = 0, fishT = 2;
 
 const starBeacon = new THREE.Mesh(
   new THREE.CylinderGeometry(2.4, 2.4, 90, 14, 1, true),
@@ -931,8 +1012,16 @@ function triggerEvent(kind) {
   if (kind === 'foodRain') { rainT = 6; addToast('光点雨！', '全场疯狂撒粮 6 秒'); }
   else if (kind === 'frenzy') { frenzyT = 10; addToast('双倍狂欢！', '全场吃食得分 ×2，持续 10 秒'); }
   else if (kind === 'boss') {
-    spawnBoss();
-    if (boss) addToast('蛇王降临！', '击杀蛇王 +100 分与满地黄金');
+    const duo = bosses.length === 1 || Math.random() < 0.35;
+    if (duo && bosses.length === 0) {
+      const a = spawnBoss();
+      if (a) { spawnBoss(a); addBigBanner('双蛇王之战！', '两只蛇王互相猎杀 · 各自击杀得巨额赏金'); return; }
+    } else if (duo && bosses.length === 1) {
+      spawnBoss(bosses[0]); addBigBanner('第二只蛇王降临！', '宿敌相争 · 渔翁得利');
+      return;
+    }
+    const b = spawnBoss();
+    if (b) addBigBanner('蛇王降临！', '击杀蛇王 +100 分与满地黄金');
   }
 }
 
@@ -1092,7 +1181,8 @@ class Snake {
         spawnFood(this.trail.atX(tk) + rand(-0.8, 0.8), this.trail.atZ(tk) + rand(-0.8, 0.8), 1, this.hex);
       }
     }
-    const sp = BASE_SPEED * (boosting ? BOOST_MULT : 1) * (this.slowT > 0 ? 0.55 : 1);
+    const sp = BASE_SPEED * (boosting ? BOOST_MULT : 1) * (this.slowT > 0 ? 0.55 : 1) * (inLake(this.x, this.z) ? 1.18 : 1);
+    this.lastSpeed = sp;
     const maxTurn = clamp(4.2 - (this.r - 0.5) * 0.95, 2.4, 4.2);
     const d = angDiff(this.a, this.targetA);
     this.a += clamp(d, -maxTurn * dt, maxTurn * dt);
@@ -1202,25 +1292,26 @@ class Snake {
     if (!this.alive) return;
     this.alive = false; this.deaths++; this.deadT = gameTime;
     if (cause === 'storm') popRing(this.x, this.z, 0x9575cd, 10);
-    if (this.isBoss) {
-      boss = null;
-      const bonus = 100 + Math.floor(this.score * 0.15);
-      for (let i = 0; i < this.segs; i += 2) {
-        const a = rand(0, TAU), d = rand(0, 2);
-        spawnFood(this.sx[i] + Math.cos(a) * d, this.sz[i] + Math.sin(a) * d, 4, 0xffd54f, 1);
-      }
-      popRing(this.x, this.z, 0xffc107, 16);
-      burst(this.x, 1.4, this.z, 0xffd54f, 22, 10, 10);
-      if (killer && killer.alive) {
-        killer.kills++;
-        killer.score += bonus;
-        killer.killTimes.push(gameTime);
-        if (killer.isPlayer) { sfx.ach(); shake = 0.9; unlockAch('boss'); addToast('击败蛇王！', `+${bonus} 分与满地黄金`); }
-        addFeed(`${killer.name} 击败了蛇王（+${bonus}）`, 0xffc107);
-      } else addFeed('蛇王退场了', 0xffc107);
-      slowmoT = Math.max(slowmoT, 0.8);
-      return;
+  if (this.isBoss) {
+    bosses = bosses.filter(x => x !== this);
+    const bonus = 100 + Math.floor(this.score * 0.15);
+    for (let i = 0; i < this.segs; i += 2) {
+      const a = rand(0, TAU), d = rand(0, 2);
+      spawnFood(this.sx[i] + Math.cos(a) * d, this.sz[i] + Math.sin(a) * d, 4, 0xffd54f, 1);
     }
+    popRing(this.x, this.z, 0xffc107, 16);
+    burst(this.x, 1.4, this.z, 0xffd54f, 22, 10, 10);
+    if (killer && killer.alive) {
+      killer.kills++;
+      killer.score += bonus;
+      killer.killTimes.push(gameTime);
+      if (killer.isPlayer) { sfx.ach(); shake = 0.9; unlockAch('boss'); addToast('击败蛇王！', `+${bonus} 分与满地黄金`); }
+      addFeed(`${killer.name} 击败了蛇王（+${bonus}）`, 0xffc107);
+    } else addFeed(cause === 'storm' ? '蛇王被风暴吞噬了' : '蛇王退场了', 0xffc107);
+    if (this.rival && this.rival.alive) { this.rival.rival = null; addFeed(`${this.rival.name} 孤独称王`, 0xffc107); }
+    slowmoT = Math.max(slowmoT, 0.8);
+    return;
+  }
     const n = Math.floor(this.segs / 2);
     for (let i = 0; i < n; i++) {
       const a = rand(0, TAU), d = rand(0, 1.8);
@@ -1270,6 +1361,14 @@ class Snake {
 }
 
 function dist2(x1, z1, x2, z2) { const dx = x1 - x2, dz = z1 - z2; return dx * dx + dz * dz; }
+Snake.prototype.addHat = function (idx) {
+  if (!idx || !hatGeos[idx]) return;
+  if (this.hat) { this.headGroup.remove(this.hat); this.hat = null; }
+  this.hatIdx = idx;
+  this.hat = new THREE.Mesh(hatGeos[idx], hatMatShared);
+  this.hat.position.y = 1.1;
+  this.headGroup.add(this.hat);
+};
 function buildHead(hex) {
   const c = headProto.clone(true);
   c.traverse(o => {
@@ -1318,6 +1417,13 @@ function aiThink(s) {
   if (stormActive() && dc > stormR - 16) {
     s.targetA = Math.atan2(-s.z, -s.x) + rand(-0.2, 0.2);
     s.wantBoost = dc > stormR - 6 && (s.score > 30 || s.swiftT > 0);
+    return;
+  }
+  if (s.isBoss && s.rival && s.rival.alive) {
+    const lead = 5 + s.rival.segs * s.spacing * 0.3;
+    const tx = s.rival.x + Math.cos(s.rival.a) * lead, tz = s.rival.z + Math.sin(s.rival.a) * lead;
+    s.targetA = Math.atan2(tz - s.z, tx - s.x);
+    s.wantBoost = true;
     return;
   }
   if (dc > ARENA_R - 34) {
@@ -1704,12 +1810,12 @@ let playerName = '无名小蛇', playerHex = PALETTE[0], playerPattern = 1;
 function startRun(name, hex, pattern) {
   playerName = name; playerHex = hex; playerPattern = pattern === undefined ? playerPattern : pattern;
   if (player) { usedColors.delete(player.hex); usedNames.delete(player.name); player.destroy(); player = null; }
-  for (let i = snakes.length - 1; i >= 0; i--) {
-    const s = snakes[i];
-    usedColors.delete(s.hex); usedNames.delete(s.name);
-    if (s === boss) boss = null;
-    s.destroy();
-  }
+    for (let i = snakes.length - 1; i >= 0; i--) {
+      const s = snakes[i];
+      usedColors.delete(s.hex); usedNames.delete(s.name);
+      s.destroy();
+    }
+    bosses.length = 0;
   respawnQueue.length = 0;
   aiCount = 0;
   gameTime = 0;
@@ -1724,6 +1830,7 @@ function startRun(name, hex, pattern) {
   player.attachHead();
   player.score = 10;
   player.tasks = makeTasks();
+  player.addHat(+(localStorage.getItem('sss3d_hat') || 0));
   player.spawnAt(x, z);
   renderTasks(player);
   for (let i = 0; i < AI_N; i++) spawnAI();
@@ -1750,6 +1857,7 @@ function spawnAI() {
   s.spawnAt(x, z);
   s._aiCounted = true;
   aiCount++;
+  if (Math.random() < 0.4) s.addHat(randi(2, 7));
   return s;
 }
 
@@ -1799,7 +1907,7 @@ function update(dt) {
     const roll = Math.random();
     if (roll < 0.42) triggerEvent('foodRain');
     else if (roll < 0.78) triggerEvent('frenzy');
-    else triggerEvent(boss && boss.alive ? 'foodRain' : 'boss');
+    else triggerEvent(bosses.length > 0 ? 'foodRain' : 'boss');
   }
   if (rainT > 0) {
     rainT -= sdt;
@@ -1870,6 +1978,20 @@ function update(dt) {
   }
   accSpawnGuard += dt;
   if (foodAliveCount < FOOD_N && accSpawnGuard > 0.05) { accSpawnGuard = 0; spawnRandomFood(); }
+  lakeRippleT -= sdt;
+  if (lakeRippleT <= 0) {
+    lakeRippleT = rand(0.6, 1.4);
+    const a = rand(0, TAU), d = Math.sqrt(Math.random()) * (LAKE_R - 6);
+    popRing(Math.cos(a) * d, Math.sin(a) * d, 0xe3f6fd, rand(1.2, 2.4));
+  }
+  fishT -= sdt;
+  if (fishT <= 0) {
+    fishT = rand(2, 4);
+    if (foodAliveCount < FOOD_CAP - 40) {
+      const a = rand(0, TAU), d = rand(8, LAKE_R - 6);
+      spawnFood(Math.cos(a) * d, Math.sin(a) * d, 4, 0x4dd0e1, 3);
+    }
+  }
   let si = 0;
   for (const s of snakes) {
     if (s.alive) {
@@ -1958,6 +2080,15 @@ const menu = $('menu'), nameInput = $('nameInput'), playBtn = $('playBtn');
     b.onclick = () => { document.querySelectorAll('.pat').forEach(e => e.classList.remove('sel')); b.classList.add('sel'); playerPattern = v; sfx.click(); };
     pr.appendChild(b);
   });
+  const hr = $('hatRow');
+  const savedHat = +(localStorage.getItem('sss3d_hat') || 0);
+  HAT_NAMES.forEach((label, v) => {
+    const b = document.createElement('button');
+    b.className = 'pat' + (v === savedHat ? ' sel' : '');
+    b.textContent = label;
+    b.onclick = () => { document.querySelectorAll('#hatRow .pat').forEach(e => e.classList.remove('sel')); b.classList.add('sel'); localStorage.setItem('sss3d_hat', v); sfx.click(); };
+    hr.appendChild(b);
+  });
   const savedName = localStorage.getItem('sss3d_name');
   if (savedName) nameInput.value = savedName;
 })();
@@ -1987,7 +2118,7 @@ for (let i = 0; i < AI_N; i++) spawnAI();
 
 window.__game = {
   get snakes() { return snakes; }, get player() { return player; }, get phase() { return phase; }, get time() { return gameTime; },
-  get foodAliveCount() { return foodAliveCount; }, get buffs() { return buffs; }, get boss() { return boss; },
+  get foodAliveCount() { return foodAliveCount; }, get buffs() { return buffs; }, get bosses() { return bosses; },
   start: (n, c, p) => startRun(n || '测试蛇', c || PALETTE[0], p),
   coil() {
     if (!player || !player.alive) return 'no player';
@@ -2005,14 +2136,22 @@ window.__game = {
     player.a = player.targetA = dir;
     return { segs: player.segs, trail: player.trail.count };
   },
-  bossInfo() { return boss ? { alive: boss.alive, score: Math.floor(boss.score), segs: boss.segs, crown: boss.crown.visible } : null; },
-  spawnBossNow() { triggerEvent('boss'); return boss ? { alive: boss.alive, score: Math.floor(boss.score) } : 'failed'; },
-  killBoss() {
-    if (!boss || !boss.alive) return 'no boss';
-    const info = { killer: player && player.alive ? player.name : null, bonus: 100 + Math.floor(boss.score * 0.15) };
-    boss.die(player && player.alive ? player : null);
-    return { ...info, bossAlive: boss ? boss.alive : false, ach: achUnlocked.has('boss'), playerScore: player ? Math.floor(player.score) : 0 };
+  bossInfo() { return bosses[0] ? { alive: bosses[0].alive, score: Math.floor(bosses[0].score), segs: bosses[0].segs, crown: bosses[0].crown.visible } : null; },
+  spawnBossNow() { const b = spawnBoss(); return b ? { alive: b.alive, score: Math.floor(b.score) } : 'failed'; },
+  spawnDuoNow() {
+    const a = spawnBoss();
+    if (!a) return 'failed';
+    spawnBoss(a);
+    return bosses.map(b => ({ alive: b.alive, rival: !!b.rival }));
   },
+  killBoss() {
+    const b = bosses[0];
+    if (!b) return 'no boss';
+    const info = { killer: player && player.alive ? player.name : null, bonus: 100 + Math.floor(b.score * 0.15) };
+    b.die(player && player.alive ? player : null);
+    return { ...info, bossLeft: bosses.length, ach: achUnlocked.has('boss'), playerScore: player ? Math.floor(player.score) : 0 };
+  },
+  inLakeTest(x, z) { return inLake(x, z); },
   portalInfo() { return { count: portals.length, playerPortals: player ? player.portalCount : 0, cds: snakes.map(s => +s.portalCD.toFixed(1)) }; },
   teleportNow() {
     if (!player || !player.alive) return 'no player';
@@ -2020,10 +2159,10 @@ window.__game = {
     teleportSnake(player, portals[1]);
     return { moved: Math.hypot(player.x - before[0], player.z - before[1]) > 10, cd: player.portalCD, shield: +player.shield.toFixed(2) };
   },
-  triggerEventNow(kind) { triggerEvent(kind); return { rainT, frenzyT, boss: boss ? boss.alive : false }; },
+  triggerEventNow(kind) { triggerEvent(kind); return { rainT, frenzyT, bossCount: bosses.length }; },
   stormInfo() { return { phase: stormPhase, R: Math.floor(stormR), outside: player ? Math.hypot(player.x, player.z) > stormR : false, stormTime: player ? +player.stormTime.toFixed(1) : 0 }; },
   stormStartNow() { stormPhase = 'shrink'; stormR = 80; return { R: stormR }; },
-  spawnStarNow() { return spawnStar() ? { x: Math.floor(FX[starIdx]), z: Math.floor(FZ[starIdx]) } : null; },
+  spawnStarNow() { return spawnStar() ? { x: FX[starIdx], z: FZ[starIdx] } : null; },
   dayInfo() { return { seg: Math.floor((gameTime % 240) / 60), sunI: +sun.intensity.toFixed(2), fog: '#' + scene.fog.color.getHexString() }; },
   soakRuns(n) {
     const bad = [];
@@ -2093,7 +2232,7 @@ window.__game = {
       top: alive.slice(0, 5).map(s => ({ n: s.name, s: Math.floor(s.score), k: s.kills })),
       player: player ? { s: Math.floor(player.score), k: player.kills, alive: player.alive, segs: player.segs, combo: player.combo, buffs: BUFF_KEYS.filter(k => player[k + 'T'] > 0), crown: player.crown.visible, crownTime: +player.crownTime.toFixed(1), portals: player.portalCount } : null,
       foods: foodAliveCount, buffsOn: buffs.length,
-      events: { rain: +rainT.toFixed(1), frenzy: +frenzyT.toFixed(1), boss: boss ? boss.alive : false },
+      events: { rain: +rainT.toFixed(1), frenzy: +frenzyT.toFixed(1), bossCount: bosses.length },
       star: starIdx >= 0 && foodAlive[starIdx] ? { x: Math.floor(FX[starIdx]), z: Math.floor(FZ[starIdx]), v: FV[starIdx] } : null,
       day: Math.floor((gameTime % 240) / 60),
       tasks: player && player.tasks ? player.tasks.map(t => ({ id: t.id, done: t.done })) : null
