@@ -118,18 +118,22 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:"Segoe UI","Microso
       <span><i style="background:#ffca28"></i>免费疾速</span>
       <span><i style="background:#ec407a"></i>双倍积分</span>
       <span><i style="background:#90a4ae"></i>幽灵穿身</span>
+      <span><i style="background:#81d4fa"></i>冰冻周围</span>
+      <span><i style="background:#ff8a65"></i>缩小保命</span>
     </div>
     <div class="rowLabel">随 机 事 件</div>
     <div id="buffLegend">
       <span><i style="background:#a5d6a7"></i>光点雨</span>
       <span><i style="background:#f48fb1"></i>双倍狂欢</span>
       <span><i style="background:#ffc107"></i>蛇王降临·击杀有赏</span>
+      <span><i style="background:#9575cd"></i>风暴缩圈</span>
     </div>
     <button id="playBtn" class="bigBtn">开 战</button>
     <div class="ctrl-help">
       电脑：移动鼠标转向，按住左键或空格加速（会掉分）｜手机：拖动转向 + 加速按钮<br>
       吃光点变长，撞别人身体即死；快速连吃有连击加成，击杀大蛇有赏金<br>
-      黄/蓝传送门让你瞬移全场；榜首戴金冠；击杀蛇王得巨额黄金
+      黄/蓝传送门让你瞬移全场；榜首戴金冠；击杀蛇王得巨额黄金<br>
+      90 秒后风暴缩圈：圈外持续掉分，归零即被风暴吞噬——抢占安全区！
     </div>
   </div>
 </div>
@@ -182,6 +186,9 @@ const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
 const TAU = Math.PI * 2;
 function angDiff(a, b) { let d = (b - a) % TAU; if (d > Math.PI) d -= TAU; if (d < -Math.PI) d += TAU; return d; }
 function darker(hex, f) { const c = new THREE.Color(hex); c.multiplyScalar(f); return c.getHex(); }
+
+let stormPhase = 'idle', stormR = ARENA_R;
+function stormActive() { return stormPhase === 'shrink' || stormPhase === 'hold'; }
 
 const $ = id => document.getElementById(id);
 const cvs = $('c3d'), minimapC = $('minimap'), mmx = minimapC.getContext('2d');
@@ -362,6 +369,8 @@ const sfx = {
   die: () => beep(300, 70, 0.5, 'sawtooth', 0.16),
   boost: () => beep(220, 700, 0.14, 'sawtooth', 0.05),
   pickup: () => { beep(523, 784, 0.1, 'sine', 0.1); beep(784, 1046, 0.14, 'sine', 0.1, 0.1); },
+  mini: () => beep(700, 180, 0.3, 'triangle', 0.12),
+  storm: () => beep(170, 55, 0.9, 'sawtooth', 0.13),
   ach: () => { beep(784, 784, 0.1, 'triangle', 0.09); beep(988, 988, 0.1, 'triangle', 0.09, 0.11); beep(1318, 1318, 0.18, 'triangle', 0.1, 0.22); },
   click: () => beep(760, 760, 0.05, 'sine', 0.08)
 };
@@ -387,6 +396,21 @@ const FX = new Float32Array(FOOD_CAP), FZ = new Float32Array(FOOD_CAP), FV = new
 const FPH = new Float32Array(FOOD_CAP), FR = new Float32Array(FOOD_CAP), FG = new Uint8Array(FOOD_CAP);
 const foodAlive = new Uint8Array(FOOD_CAP), foodPrev = new Uint8Array(FOOD_CAP), freeSlots = [];
 const ZERO_M = new THREE.Matrix4().makeScale(0, 0, 0);
+const GH = 28, GS = 20, GOFF = 280, GC = GH * GH;
+const cellCount = new Uint16Array(GC), cellStart = new Uint32Array(GC + 1), cellCursor = new Uint32Array(GC), cellItems = new Uint16Array(FOOD_CAP);
+function cOf(x, z) {
+  const cx = clamp(((x + GOFF) / GS) | 0, 0, GH - 1), cz = clamp(((z + GOFF) / GS) | 0, 0, GH - 1);
+  return cx + cz * GH;
+}
+function rebuildFoodGrid() {
+  cellCount.fill(0);
+  for (let i = 0; i < FOOD_CAP; i++) if (foodAlive[i]) cellCount[cOf(FX[i], FZ[i])]++;
+  let s = 0;
+  for (let c = 0; c < GC; c++) { cellStart[c] = s; s += cellCount[c]; }
+  cellStart[GC] = s;
+  cellCursor.set(cellStart.subarray(0, GC));
+  for (let i = 0; i < FOOD_CAP; i++) if (foodAlive[i]) cellItems[cellCursor[cOf(FX[i], FZ[i])]++] = i;
+}
 let foodAliveCount = 0;
 for (let i = FOOD_CAP - 1; i >= FOOD_N; i--) freeSlots.push(i);
 const foodMesh = new THREE.InstancedMesh(new THREE.SphereGeometry(1, 10, 8), new THREE.MeshLambertMaterial({ emissive: 0x777777 }), FOOD_CAP);
@@ -402,7 +426,8 @@ function spawnFood(x, z, v, hex, gold) {
 }
 function killFood(i) { foodAlive[i] = 0; foodAliveCount--; freeSlots.push(i); }
 function spawnRandomFood() {
-  const a = rand(0, TAU), d = Math.sqrt(Math.random()) * (ARENA_R - 8);
+  const span = stormActive() ? Math.min(ARENA_R - 8, stormR * 0.92) : ARENA_R - 8;
+  const a = rand(0, TAU), d = Math.sqrt(Math.random()) * span;
   const roll = Math.random();
   if (roll < 0.015) spawnFood(Math.cos(a) * d, Math.sin(a) * d, 12, 0xffd54f, true);
   else if (roll < 0.74) spawnFood(Math.cos(a) * d, Math.sin(a) * d, 1, CANDY[randi(0, CANDY.length - 1)]);
@@ -460,6 +485,21 @@ function buffIconTexture(kind) {
     g.moveTo(74, 18); g.lineTo(42, 66); g.lineTo(62, 66); g.lineTo(52, 110); g.lineTo(90, 56); g.lineTo(68, 56); g.closePath(); g.fill();
   } else if (kind === 'double') {
     g.fillStyle = '#ec407a'; g.font = 'bold 72px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('×2', 64, 66);
+  } else if (kind === 'freeze') {
+    g.strokeStyle = '#4fc3f7'; g.lineWidth = 8;
+    for (let a = 0; a < 3; a++) {
+      const ang = a * Math.PI / 3;
+      g.beginPath();
+      g.moveTo(64 - Math.cos(ang) * 34, 64 - Math.sin(ang) * 34);
+      g.lineTo(64 + Math.cos(ang) * 34, 64 + Math.sin(ang) * 34);
+      g.stroke();
+    }
+    g.fillStyle = '#b3e5fc'; g.beginPath(); g.arc(64, 64, 12, 0, TAU); g.fill();
+  } else if (kind === 'mini') {
+    g.strokeStyle = '#ff8a65'; g.lineWidth = 10;
+    g.beginPath(); g.arc(64, 64, 34, 0.6, TAU - 0.6); g.stroke();
+    g.fillStyle = '#ff8a65'; g.beginPath();
+    g.moveTo(30, 20); g.lineTo(64, 44); g.lineTo(30, 60); g.closePath(); g.fill();
   } else {
     g.fillStyle = '#90a4ae'; g.beginPath(); g.arc(64, 56, 32, Math.PI, 0);
     g.lineTo(96, 96); g.lineTo(82, 86); g.lineTo(70, 98); g.lineTo(58, 86); g.lineTo(46, 98); g.lineTo(32, 86); g.closePath(); g.fill();
@@ -474,7 +514,9 @@ const BUFF_DEFS = {
   shield: { hex: 0x42a5f5, name: '护盾', dur: 6 },
   swift: { hex: 0xffca28, name: '疾速', dur: 7 },
   double: { hex: 0xec407a, name: '双倍', dur: 12 },
-  ghost: { hex: 0x90a4ae, name: '幽灵', dur: 6 }
+  ghost: { hex: 0x90a4ae, name: '幽灵', dur: 6 },
+  freeze: { hex: 0x81d4fa, name: '冰冻', dur: 6 },
+  mini: { hex: 0xff8a65, name: '缩小', dur: 0 }
 };
 const BUFF_KEYS = Object.keys(BUFF_DEFS);
 const buffs = [];
@@ -535,6 +577,19 @@ function updateBuffs(dt) {
 }
 function grantBuff(s, kind) {
   const def = BUFF_DEFS[kind];
+  if (kind === 'mini') {
+    s.score = Math.max(10, s.score * 0.5);
+    s.updateDerived();
+    s.buffSet.add(kind);
+    if (s.isPlayer) {
+      sfx.mini();
+      s.statBuffs++;
+      burst(s.x, 1.2, s.z, def.hex, 10, 6, 6);
+      addFeed('缩小！长度减半', def.hex);
+      if (s.buffSet.size >= 5) unlockAch('all5');
+    }
+    return;
+  }
   s[kind + 'T'] = def.dur;
   if (s.isPlayer) {
     sfx.pickup();
@@ -610,6 +665,38 @@ function spawnBoss() {
 }
 
 let eventT = 30, frenzyT = 0, rainT = 0, rainAcc = 0, slowmoT = 0;
+
+const stormWall = new THREE.Mesh(
+  new THREE.CylinderGeometry(1, 1, 44, 72, 1, true),
+  new THREE.MeshBasicMaterial({ color: 0x9575cd, transparent: true, opacity: 0.12, side: THREE.DoubleSide, depthWrite: false }));
+stormWall.position.y = 22; stormWall.visible = false;
+scene.add(stormWall);
+const stormRing = new THREE.Mesh((() => { const g = new THREE.TorusGeometry(1, 0.6, 8, 90); g.rotateX(-Math.PI / 2); return g; })(),
+  new THREE.MeshBasicMaterial({ color: 0x7e57c2, transparent: true, opacity: 0.55 }));
+stormRing.position.y = 0.6; stormRing.visible = false;
+scene.add(stormRing);
+function stormTick() {
+  if (stormPhase === 'idle' && gameTime > 75) {
+    stormPhase = 'warn';
+    addToast('风暴预警！', '60 秒后开始缩圈，圈外持续掉分');
+    sfx.storm();
+  } else if (stormPhase === 'warn' && gameTime > 135) {
+    stormPhase = 'shrink';
+    addToast('风暴缩圈开始！', '快进入紫色安全圈');
+    sfx.storm();
+  }
+  if (stormPhase === 'shrink') {
+    stormR = Math.max(60, stormR - lastDt * 1.35);
+    if (stormR <= 60) stormPhase = 'hold';
+  }
+  const on = stormActive();
+  stormWall.visible = stormRing.visible = on;
+  if (on) {
+    stormWall.scale.set(stormR, 1, stormR);
+    stormRing.scale.set(stormR, 1, stormR);
+    stormWall.rotation.y += lastDt * 0.05;
+  }
+}
 
 const TASK_POOL = [
   { id: 'eat', text: '吃掉光点', ns: [40, 60, 80], get: p => p.statEaten },
@@ -695,7 +782,8 @@ const ACH_DEFS = [
   { id: 'boss', name: '屠蛇者', desc: '击败降临的蛇王', chk: () => false },
   { id: 'portal10', name: '传送大师', desc: '单局穿越传送门 10 次', chk: p => p.portalCount >= 10 },
   { id: 'crown60', name: '王者风范', desc: '累计佩戴王冠 60 秒', chk: p => p.crownTime >= 60 },
-  { id: 'quests', name: '任务大师', desc: '单局完成全部 3 个任务', chk: p => p.taskAllBonus }
+  { id: 'quests', name: '任务大师', desc: '单局完成全部 3 个任务', chk: p => p.taskAllBonus },
+  { id: 'storm60', name: '风暴行者', desc: '缩圈开始后存活 60 秒', chk: p => p.stormTime >= 60 }
 ];
 let achUnlocked = new Set(JSON.parse(localStorage.getItem('sss3d_ach') || '[]'));
 function unlockAch(id) {
@@ -734,6 +822,7 @@ class Snake {
     this.portalCD = 0; this.portalCount = 0; this.crownTime = 0;
     this.isBoss = false; this.isLeader = false;
     this.statEaten = 0; this.statGold = 0; this.statBuffs = 0; this.reachedTop3 = false;
+    this.slowT = 0; this.stormTime = 0;
     this.tasks = null; this.taskAllBonus = false;
     this.persona = PERSONAS[randi(0, PERSONAS.length - 1)];
     this.trail = new Trail();
@@ -810,7 +899,7 @@ class Snake {
         spawnFood(t[0] + rand(-0.8, 0.8), t[1] + rand(-0.8, 0.8), 1, this.hex);
       }
     }
-    const sp = BASE_SPEED * (boosting ? BOOST_MULT : 1);
+    const sp = BASE_SPEED * (boosting ? BOOST_MULT : 1) * (this.slowT > 0 ? 0.55 : 1);
     const maxTurn = clamp(4.2 - (this.r - 0.5) * 0.95, 2.4, 4.2);
     const d = angDiff(this.a, this.targetA);
     this.a += clamp(d, -maxTurn * dt, maxTurn * dt);
@@ -838,6 +927,7 @@ class Snake {
     this.swiftT = Math.max(0, this.swiftT - dt);
     this.doubleT = Math.max(0, this.doubleT - dt);
     this.ghostT = Math.max(0, this.ghostT - dt);
+    this.slowT = Math.max(0, this.slowT - dt);
     if (this.comboT > 0) { this.comboT -= dt; if (this.comboT <= 0) this.combo = 0; }
     return sp;
   }
@@ -902,9 +992,10 @@ class Snake {
     this.body.count = this.segs;
     this.body.instanceMatrix.needsUpdate = true;
   }
-  die(killer) {
+  die(killer, cause) {
     if (!this.alive) return;
     this.alive = false; this.deaths++; this.deadT = gameTime;
+    if (cause === 'storm') popRing(this.x, this.z, 0x9575cd, 10);
     if (this.isBoss) {
       boss = null;
       const bonus = 100 + Math.floor(this.score * 0.15);
@@ -952,9 +1043,10 @@ class Snake {
     if (this.isPlayer) {
       sfx.die(); shake = 0.7;
       slowmoT = Math.max(slowmoT, 1.1);
+      this.deathCause = cause || (killer ? 'kill' : 'wall');
       onPlayerDeath(killer);
     } else if (player && player.alive && dist2(this.x, this.z, player.x, player.z) < 100 * 100) sfx.kill();
-    addFeed(this.isPlayer ? `${this.name} 被终结了` : killer ? `${killer.name} 终结了 ${this.name}` : `${this.name} 撞墙了`, this.hex);
+    addFeed(this.isPlayer ? `${this.name} ${cause === 'storm' ? '被风暴吞噬' : killer ? '被终结了' : '撞墙了'}` : killer ? `${killer.name} 终结了 ${this.name}` : cause === 'storm' ? `${this.name} 被风暴吞噬` : `${this.name} 撞墙了`, this.hex);
   }
   destroy() {
     scene.remove(this.body); scene.remove(this.headGroup);
@@ -975,8 +1067,9 @@ function buildHead(hex) {
   return c;
 }
 function safeSpot(minClear) {
+  const maxD = stormActive() ? Math.max(30, stormR * 0.72) : ARENA_R * 0.68;
   for (let t = 0; t < 80; t++) {
-    const a = rand(0, TAU), d = Math.sqrt(Math.random()) * ARENA_R * 0.68;
+    const a = rand(0, TAU), d = Math.sqrt(Math.random()) * maxD;
     const x = Math.cos(a) * d, z = Math.sin(a) * d;
     let ok = true;
     for (const s of snakes) {
@@ -1008,6 +1101,11 @@ function aiThink(s) {
   const P = s.persona;
   const dc = Math.hypot(s.x, s.z);
   s.wantBoost = false;
+  if (stormActive() && dc > stormR - 16) {
+    s.targetA = Math.atan2(-s.z, -s.x) + rand(-0.2, 0.2);
+    s.wantBoost = dc > stormR - 6 && (s.score > 30 || s.swiftT > 0);
+    return;
+  }
   if (dc > ARENA_R - 34) {
     const toC = Math.atan2(-s.z, -s.x);
     if (dc > ARENA_R - 14) s.targetA = toC + rand(-0.3, 0.3);
@@ -1081,27 +1179,36 @@ function eatFoods(s) {
   const magnet = s.magnetT > 0;
   const mr = magnet ? 26 : 3.4 + s.r * 1.6, mr2 = mr * mr;
   const mult = (s.doubleT > 0 ? 2 : 1) * (frenzyT > 0 ? 2 : 1);
-  for (let i = 0; i < FOOD_CAP; i++) {
-    if (!foodAlive[i]) continue;
-    const dx = s.x - FX[i], dz = s.z - FZ[i];
-    const d2 = dx * dx + dz * dz;
-    if (d2 > mr2) continue;
-    if (d2 < er2) {
-      killFood(i);
-      if (s.comboT > 0) s.combo++; else s.combo = 1;
-      s.comboT = 2;
-      const comboMult = 1 + Math.min(s.combo, 20) * 0.05;
-      const gain = FV[i] * mult * comboMult;
-      s.score += gain;
-      s.updateDerived();
-      if (s.isPlayer) {
-        s.statEaten++;
-        if (FG[i]) { s.statGold++; sfx.gold(); burst(FX[i], 0.8, FZ[i], 0xffd54f, 6, 4, 6); }
-        else { sfx.eat(s.combo); burst(FX[i], 0.8, FZ[i], FC[i], 2, 3, 5); }
+  const cx = clamp(((s.x + GOFF) / GS) | 0, 0, GH - 1), cz = clamp(((s.z + GOFF) / GS) | 0, 0, GH - 1);
+  const rr = Math.ceil(mr / GS);
+  const gx0 = Math.max(0, cx - rr), gx1 = Math.min(GH - 1, cx + rr);
+  const gz0 = Math.max(0, cz - rr), gz1 = Math.min(GH - 1, cz + rr);
+  for (let gz = gz0; gz <= gz1; gz++) {
+    for (let gx = gx0; gx <= gx1; gx++) {
+      const c = gx + gz * GH;
+      for (let k = cellStart[c], ke = cellStart[c] + cellCount[c]; k < ke; k++) {
+        const i = cellItems[k];
+        const dx = s.x - FX[i], dz = s.z - FZ[i];
+        const d2 = dx * dx + dz * dz;
+        if (d2 > mr2) continue;
+        if (d2 < er2) {
+          killFood(i);
+          if (s.comboT > 0) s.combo++; else s.combo = 1;
+          s.comboT = 2;
+          const comboMult = 1 + Math.min(s.combo, 20) * 0.05;
+          const gain = FV[i] * mult * comboMult;
+          s.score += gain;
+          s.updateDerived();
+          if (s.isPlayer) {
+            s.statEaten++;
+            if (FG[i]) { s.statGold++; sfx.gold(); burst(FX[i], 0.8, FZ[i], 0xffd54f, 6, 4, 6); }
+            else { sfx.eat(s.combo); burst(FX[i], 0.8, FZ[i], FC[i], 2, 3, 5); }
+          }
+        } else {
+          const pull = Math.min(1, (magnet ? 16 : 9) * lastDt);
+          FX[i] += dx * pull; FZ[i] += dz * pull;
+        }
       }
-    } else {
-      const pull = Math.min(1, (magnet ? 16 : 9) * lastDt);
-      FX[i] += dx * pull; FZ[i] += dz * pull;
     }
   }
 }
@@ -1200,6 +1307,7 @@ function updateHUD(dt) {
       if (sc >= 3000) unlockAch('s3000');
       if (player.crownTime >= 60) unlockAch('crown60');
       if (player.portalCount >= 10) unlockAch('portal10');
+      if (player.stormTime >= 60) unlockAch('storm60');
       if (player.kills >= 1) unlockAch('k1');
       if (player.kills >= 3) unlockAch('k3');
       if (player.kills >= 6) unlockAch('k6');
@@ -1227,9 +1335,11 @@ function updateHUD(dt) {
     renderTasks(player);
     let chips = '';
     for (const k of BUFF_KEYS) {
+      if (BUFF_DEFS[k].dur <= 0) continue;
       const t = player[k + 'T'];
       if (t > 0) chips += `<div class="chip"><i style="background:#${new THREE.Color(BUFF_DEFS[k].hex).getHexString()}"></i>${BUFF_DEFS[k].name}<small>${t.toFixed(0)}s</small></div>`;
     }
+    if (stormActive()) chips += `<div class="chip"><i style="background:#9575cd"></i>风暴<small>${stormPhase === 'shrink' ? '缩圈中' : '已收拢'}</small></div>`;
     buffBar.innerHTML = chips;
   } else {
     buffBar.innerHTML = '';
@@ -1244,6 +1354,12 @@ function drawMinimap() {
   mmx.beginPath(); mmx.arc(cx, cx, W / 2 - 3, 0, TAU); mmx.fill();
   mmx.strokeStyle = '#ffab91'; mmx.lineWidth = 2;
   mmx.beginPath(); mmx.arc(cx, cx, ARENA_R * k, 0, TAU); mmx.stroke();
+  if (stormActive()) {
+    mmx.strokeStyle = '#9575cd'; mmx.lineWidth = 2.5;
+    mmx.setLineDash([4, 3]);
+    mmx.beginPath(); mmx.arc(cx, cx, Math.max(stormR * k, 4), 0, TAU); mmx.stroke();
+    mmx.setLineDash([]);
+  }
   for (const b of buffs) {
     mmx.fillStyle = '#' + new THREE.Color(BUFF_DEFS[b.kind].hex).getHexString();
     mmx.beginPath(); mmx.arc(cx + b.x * k, cx + b.z * k, 3.4, 0, TAU); mmx.fill();
@@ -1386,11 +1502,31 @@ let accSpawnGuard = 0;
 function update(dt) {
   lastDt = dt;
   if (slowmoT > 0) slowmoT -= dt;
-  const sdt = dt * (slowmoT > 0 ? 0.35 : 1);
-  gameTime += sdt;
-  cloudGroup.rotation.y += sdt * 0.004;
-  musicTick();
-  eventT -= sdt;
+    const sdt = dt * (slowmoT > 0 ? 0.35 : 1);
+    gameTime += sdt;
+    cloudGroup.rotation.y += sdt * 0.004;
+    musicTick();
+    stormTick();
+    if (stormActive()) {
+      for (const s of snakes) {
+        if (!s.alive) continue;
+        if (s.shield > 0 || s.shieldT > 0 || s.ghostT > 0) continue;
+        if (Math.hypot(s.x, s.z) > stormR) {
+          s.score -= sdt * 18;
+          if (s.isPlayer) s.stormTime += sdt;
+          if (s.score <= 0) { s.score = 0; s.die(null, 'storm'); }
+        }
+      }
+    }
+    for (const s of snakes) {
+      if (!s.alive || s.freezeT <= 0) continue;
+      for (const o of snakes) {
+        if (o === s || !o.alive) continue;
+        if (dist2(s.x, s.z, o.x, o.z) < 26 * 26) o.slowT = 0.35;
+      }
+    }
+    eventT -= sdt;
+    rebuildFoodGrid();
   if (eventT <= 0) {
     eventT = rand(26, 40);
     const roll = Math.random();
@@ -1401,9 +1537,10 @@ function update(dt) {
   if (rainT > 0) {
     rainT -= sdt;
     rainAcc += sdt;
+    const span = stormActive() ? Math.min(ARENA_R * 0.92, stormR * 0.9) : ARENA_R * 0.92;
     while (rainAcc > 0.05) {
       rainAcc -= 0.05;
-      const a = rand(0, TAU), d = Math.sqrt(Math.random()) * ARENA_R * 0.92;
+      const a = rand(0, TAU), d = Math.sqrt(Math.random()) * span;
       spawnFood(Math.cos(a) * d, Math.sin(a) * d, 1, CANDY[randi(0, CANDY.length - 1)]);
     }
   }
@@ -1485,8 +1622,13 @@ function update(dt) {
   const warn = $('borderWarn');
   if (player && player.alive) {
     const dc = Math.hypot(player.x, player.z);
-    const t = clamp((dc - (ARENA_R - 18)) / 18, 0, 1);
-    warn.style.boxShadow = `inset 0 0 130px rgba(255,64,40,${t * 0.55})`;
+    if (stormActive()) {
+      const t = clamp((dc - stormR) / 25, 0, 1);
+      warn.style.boxShadow = `inset 0 0 150px rgba(149,117,205,${t * 0.6})`;
+    } else {
+      const t = clamp((dc - (ARENA_R - 18)) / 18, 0, 1);
+      warn.style.boxShadow = `inset 0 0 130px rgba(255,64,40,${t * 0.55})`;
+    }
   } else warn.style.boxShadow = 'inset 0 0 130px rgba(255,64,40,0)';
 }
 
@@ -1596,6 +1738,8 @@ window.__game = {
     return { moved: Math.hypot(player.x - before[0], player.z - before[1]) > 10, cd: player.portalCD, shield: +player.shield.toFixed(2) };
   },
   triggerEventNow(kind) { triggerEvent(kind); return { rainT, frenzyT, boss: boss ? boss.alive : false }; },
+  stormInfo() { return { phase: stormPhase, R: Math.floor(stormR), outside: player ? Math.hypot(player.x, player.z) > stormR : false, stormTime: player ? +player.stormTime.toFixed(1) : 0 }; },
+  stormStartNow() { stormPhase = 'shrink'; stormR = 80; return { R: stormR }; },
   tasks() {
     if (!player || !player.tasks) return null;
     return player.tasks.map(t => ({ id: t.id, n: t.n, done: t.done, cur: Math.floor(Math.min(t.get(player), t.n)) }));
