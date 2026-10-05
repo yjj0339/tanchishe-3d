@@ -772,6 +772,7 @@ function triggerEvent(kind) {
 const snakes = [];
 let player = null, phase = 'menu', gameTime = 0, shake = 0;
 const respawnQueue = [];
+let aiCount = 0;
 let usedColors = new Set(), usedNames = new Set();
 
 function radiusOf(score) { return Math.min(0.52 + Math.pow(Math.max(score, 1), 0.46) * 0.03, 1.68); }
@@ -838,6 +839,7 @@ class Snake {
     this.statEaten = 0; this.statGold = 0; this.statBuffs = 0; this.reachedTop3 = false;
     this.slowT = 0; this.stormTime = 0;
     this.tasks = null; this.taskAllBonus = false;
+    this.frozenPainted = false;
     this.persona = PERSONAS[randi(0, PERSONAS.length - 1)];
     this.trail = new Trail();
     this.sx = new Float32Array(MAX_SEG); this.sz = new Float32Array(MAX_SEG);
@@ -874,6 +876,15 @@ class Snake {
       this.body.setColorAt(i, c);
     }
     if (this.body.instanceColor) this.body.instanceColor.needsUpdate = true;
+  }
+  paintTint(hex, t) {
+    const c = new THREE.Color(), icy = C1.setHex(hex);
+    for (let i = 0; i < MAX_SEG; i++) {
+      this.body.getColorAt(i, c);
+      c.lerp(icy, t);
+      this.body.setColorAt(i, c);
+    }
+    this.body.instanceColor.needsUpdate = true;
   }
   attachHead() {
     if (!headReady || this.inner) return;
@@ -1004,6 +1015,8 @@ class Snake {
     }
     this.body.count = Math.max(1, Math.floor(this.segs));
     this.body.instanceMatrix.needsUpdate = true;
+    if (this.slowT > 0 && !this.frozenPainted) { this.paintTint(0x81d4fa, 0.5); this.frozenPainted = true; }
+    else if (this.slowT <= 0 && this.frozenPainted) { this.paintBody(); this.frozenPainted = false; }
   }
   die(killer, cause) {
     if (!this.alive) return;
@@ -1071,6 +1084,7 @@ class Snake {
         o.material.dispose();
       }
     });
+    if (this._aiCounted) { aiCount--; this._aiCounted = false; }
     const i = snakes.indexOf(this); if (i >= 0) snakes.splice(i, 1);
   }
 }
@@ -1174,9 +1188,15 @@ function aiThink(s) {
     return;
   }
   let bestScore = 0, bi = -1;
-  for (let t = 0; t < 60; t++) {
-    const i = randi(0, FOOD_CAP - 1);
-    if (!foodAlive[i]) continue;
+  const acx = clamp(((s.x + GOFF) / GS) | 0, 0, GH - 1), acz = clamp(((s.z + GOFF) / GS) | 0, 0, GH - 1);
+  const stormFoodR2 = (stormR - 8) * (stormR - 8);
+  for (let t = 0; t < 14; t++) {
+    const gx = clamp(acx + randi(-4, 4), 0, GH - 1), gz = clamp(acz + randi(-4, 4), 0, GH - 1);
+    const cc = gx + gz * GH;
+    const c0 = cellStart[cc], c1 = c0 + cellCount[cc];
+    if (c0 === c1) continue;
+    const i = cellItems[randi(c0, c1 - 1)];
+    if (stormActive() && FX[i] * FX[i] + FZ[i] * FZ[i] > stormFoodR2) continue;
     const d = Math.hypot(FX[i] - s.x, FZ[i] - s.z);
     const v = (FV[i] * (FG[i] ? 2.2 : 1)) / (14 + d);
     if (v > bestScore) { bestScore = v; bi = i; }
@@ -1498,6 +1518,7 @@ function startRun(name, hex, pattern) {
     s.destroy();
   }
   respawnQueue.length = 0;
+  aiCount = 0;
   gameTime = 0;
   eventT = 30; frenzyT = 0; rainT = 0; rainAcc = 0; slowmoT = 0;
   stormPhase = 'idle'; stormR = ARENA_R;
@@ -1527,6 +1548,8 @@ function spawnAI() {
   s.attachHead();
   s.score = rand(5, 60);
   s.spawnAt(x, z);
+  s._aiCounted = true;
+  aiCount++;
   return s;
 }
 
@@ -1619,7 +1642,7 @@ function update(dt) {
   for (let i = respawnQueue.length - 1; i >= 0; i--) {
     if (respawnQueue[i] <= gameTime) {
       respawnQueue.splice(i, 1);
-      if (snakes.filter(s => !s.isPlayer).length < AI_N) spawnAI();
+      if (aiCount < AI_N) spawnAI();
     }
   }
   accSpawnGuard += dt;
@@ -1772,6 +1795,31 @@ window.__game = {
   triggerEventNow(kind) { triggerEvent(kind); return { rainT, frenzyT, boss: boss ? boss.alive : false }; },
   stormInfo() { return { phase: stormPhase, R: Math.floor(stormR), outside: player ? Math.hypot(player.x, player.z) > stormR : false, stormTime: player ? +player.stormTime.toFixed(1) : 0 }; },
   stormStartNow() { stormPhase = 'shrink'; stormR = 80; return { R: stormR }; },
+  soak(n) {
+    const bad = [];
+    const t0 = gameTime;
+    let lowestAlive = 99;
+    for (let i = 0; i < n; i++) {
+      update(1 / 60);
+      if (i % 30 === 0) {
+        for (const s of snakes) {
+          if (!Number.isFinite(s.x) || !Number.isFinite(s.z)) bad.push('nan-pos:' + s.name);
+          if (!Number.isFinite(s.score) || s.score < 0) bad.push('bad-score:' + s.name + ':' + Math.floor(s.score));
+          for (let k = 0; k < Math.floor(s.segs); k += 40) if (!Number.isFinite(s.sx[k]) || !Number.isFinite(s.sz[k])) { bad.push('nan-seg:' + s.name); break; }
+        }
+        if (foodAliveCount < 300 || foodAliveCount > FOOD_CAP) bad.push('food-range:' + foodAliveCount);
+        const alive = snakes.filter(s => s.alive).length;
+        if (alive < lowestAlive) lowestAlive = alive;
+        if (alive < 8) bad.push('alive-low:' + alive);
+      }
+    }
+    return {
+      simSeconds: Math.floor(n / 60), elapsed: Math.floor(gameTime - t0), bad, badCount: bad.length,
+      lowestAlive, phase, alive: snakes.filter(s => s.alive).length,
+      storm: { phase: stormPhase, R: Math.floor(stormR) },
+      foods: foodAliveCount, msPerFrame: 0
+    };
+  },
   tasks() {
     if (!player || !player.tasks) return null;
     return player.tasks.map(t => ({ id: t.id, n: t.n, done: t.done, cur: Math.floor(Math.min(t.get(player), t.n)) }));
