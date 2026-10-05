@@ -398,6 +398,7 @@ const foodAlive = new Uint8Array(FOOD_CAP), foodPrev = new Uint8Array(FOOD_CAP),
 const ZERO_M = new THREE.Matrix4().makeScale(0, 0, 0);
 const GH = 28, GS = 20, GOFF = 280, GC = GH * GH;
 const cellCount = new Uint16Array(GC), cellStart = new Uint32Array(GC + 1), cellCursor = new Uint32Array(GC), cellItems = new Uint16Array(FOOD_CAP);
+const cellStartView = cellStart.subarray(0, GC);
 function cOf(x, z) {
   const cx = clamp(((x + GOFF) / GS) | 0, 0, GH - 1), cz = clamp(((z + GOFF) / GS) | 0, 0, GH - 1);
   return cx + cz * GH;
@@ -408,7 +409,7 @@ function rebuildFoodGrid() {
   let s = 0;
   for (let c = 0; c < GC; c++) { cellStart[c] = s; s += cellCount[c]; }
   cellStart[GC] = s;
-  cellCursor.set(cellStart.subarray(0, GC));
+  cellCursor.set(cellStartView);
   for (let i = 0; i < FOOD_CAP; i++) if (foodAlive[i]) cellItems[cellCursor[cOf(FX[i], FZ[i])]++] = i;
 }
 let foodAliveCount = 0;
@@ -452,7 +453,9 @@ class Trail {
   constructor() { this.x = new Float32Array(TRAIL_N); this.z = new Float32Array(TRAIL_N); this.head = 0; this.count = 0; }
   clear(x, z) { this.x[0] = x; this.z[0] = z; this.head = 0; this.count = 1; }
   push(x, z) { this.head = (this.head + 1) % TRAIL_N; this.x[this.head] = x; this.z[this.head] = z; if (this.count < TRAIL_N) this.count++; }
-  at(k) { const i = ((this.head - k) % TRAIL_N + TRAIL_N) % TRAIL_N; return [this.x[i], this.z[i]]; }
+  atX(k) { return this.x[((this.head - k) % TRAIL_N + TRAIL_N) % TRAIL_N]; }
+  atZ(k) { return this.z[((this.head - k) % TRAIL_N + TRAIL_N) % TRAIL_N]; }
+  at(k) { return [this.atX(k), this.atZ(k)]; }
 }
 
 const bodyGeo = new THREE.SphereGeometry(1, 10, 8);
@@ -468,7 +471,9 @@ function makeLabel(name) {
   return sp;
 }
 
+const buffIconCache = {};
 function buffIconTexture(kind) {
+  if (buffIconCache[kind]) return buffIconCache[kind];
   const c = document.createElement('canvas'); c.width = c.height = 128;
   const g = c.getContext('2d');
   g.lineWidth = 10; g.lineCap = 'round'; g.lineJoin = 'round';
@@ -506,6 +511,7 @@ function buffIconTexture(kind) {
     g.fillStyle = '#fff'; g.beginPath(); g.arc(52, 54, 6, 0, TAU); g.arc(78, 54, 6, 0, TAU); g.fill();
   }
   const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
+  buffIconCache[kind] = tex;
   return tex;
 }
 
@@ -637,15 +643,20 @@ function teleportSnake(s, out) {
   }
 }
 
-function makeCrown() {
-  const parts = [];
+const crownGeoParts = [];
+{
   const band = new THREE.TorusGeometry(0.95, 0.13, 6, 20); band.rotateX(Math.PI / 2);
-  parts.push(coloredGeo(band, 0xffc107));
+  crownGeoParts.push(coloredGeo(band, 0xffc107));
   for (let i = 0; i < 5; i++) {
     const a = i / 5 * TAU;
-    parts.push(coloredGeo(new THREE.ConeGeometry(0.2, 0.55, 6), 0xffd54f, M.identity().makeTranslation(Math.cos(a) * 0.95, 0.42, Math.sin(a) * 0.95)));
+    crownGeoParts.push(coloredGeo(new THREE.ConeGeometry(0.2, 0.55, 6), 0xffd54f, M.identity().makeTranslation(Math.cos(a) * 0.95, 0.42, Math.sin(a) * 0.95)));
   }
-  const mesh = new THREE.Mesh(mergeGeos(parts), new THREE.MeshLambertMaterial({ vertexColors: true }));
+}
+const crownGeoShared = mergeGeos(crownGeoParts);
+const crownMatShared = new THREE.MeshLambertMaterial({ vertexColors: true });
+crownMatShared.userData.shared = true;
+function makeCrown() {
+  const mesh = new THREE.Mesh(crownGeoShared, crownMatShared);
   mesh.position.y = 1.62;
   mesh.visible = false;
   return mesh;
@@ -737,14 +748,17 @@ function checkTasks(p) {
 }
 function renderTasks(p) {
   const box = $('taskList');
-  if (!p || !p.alive || !p.tasks) { box.innerHTML = ''; return; }
+  if (!p || !p.alive || !p.tasks) {
+    if (lastTasksHtml !== '') { box.innerHTML = ''; lastTasksHtml = ''; }
+    return;
+  }
   let html = '';
   for (const t of p.tasks) {
     const cur = Math.min(Math.floor(t.get(p)), t.n);
     const pct = Math.floor(cur / t.n * 100);
     html += `<div class="task${t.done ? ' done' : ''}"><span>${t.done ? '✔' : '○'} ${t.text}</span><span class="bar"><i style="width:${t.done ? 100 : pct}%"></i></span><span>${t.done ? '' : cur + '/' + t.n}</span></div>`;
   }
-  box.innerHTML = html;
+  if (html !== lastTasksHtml) { box.innerHTML = html; lastTasksHtml = html; }
 }
 function triggerEvent(kind) {
   if (kind === 'foodRain') { rainT = 6; addToast('光点雨！', '全场疯狂撒粮 6 秒'); }
@@ -783,7 +797,7 @@ const ACH_DEFS = [
   { id: 'portal10', name: '传送大师', desc: '单局穿越传送门 10 次', chk: p => p.portalCount >= 10 },
   { id: 'crown60', name: '王者风范', desc: '累计佩戴王冠 60 秒', chk: p => p.crownTime >= 60 },
   { id: 'quests', name: '任务大师', desc: '单局完成全部 3 个任务', chk: p => p.taskAllBonus },
-  { id: 'storm60', name: '风暴行者', desc: '缩圈开始后存活 60 秒', chk: p => p.stormTime >= 60 }
+  { id: 'storm60', name: '风暴行者', desc: '在风暴中累计存活 60 秒', chk: p => p.stormTime >= 60 }
 ];
 let achUnlocked = new Set(JSON.parse(localStorage.getItem('sss3d_ach') || '[]'));
 function unlockAch(id) {
@@ -895,8 +909,8 @@ class Snake {
       this.dropT -= dt;
       if (this.dropT <= 0) {
         this.dropT = 0.16;
-        const t = this.trail.at(Math.min(this.trail.count - 1, Math.floor(this.segs * this.spacing / 0.42)));
-        spawnFood(t[0] + rand(-0.8, 0.8), t[1] + rand(-0.8, 0.8), 1, this.hex);
+        const tk = Math.min(this.trail.count - 1, Math.floor(this.segs * this.spacing / 0.42));
+        spawnFood(this.trail.atX(tk) + rand(-0.8, 0.8), this.trail.atZ(tk) + rand(-0.8, 0.8), 1, this.hex);
       }
     }
     const sp = BASE_SPEED * (boosting ? BOOST_MULT : 1) * (this.slowT > 0 ? 0.55 : 1);
@@ -918,8 +932,7 @@ class Snake {
     }
     if (this.alive && (this.isLeader || this.isBoss)) this.crownTime += dt;
     this.updateDerived();
-    const last = this.trail.at(0);
-    const dx = this.x - last[0], dz = this.z - last[1];
+    const dx = this.x - this.trail.atX(0), dz = this.z - this.trail.atZ(0);
     if (dx * dx + dz * dz >= 0.09) this.trail.push(this.x, this.z);
     this.sampleSegs();
     this.magnetT = Math.max(0, this.magnetT - dt);
@@ -989,7 +1002,7 @@ class Snake {
       M.compose(V3.set(this.sx[i], this.r * 0.92, this.sz[i]), Q0.identity(), S3.set(s, s, s));
       this.body.setMatrixAt(i, M);
     }
-    this.body.count = this.segs;
+    this.body.count = Math.max(1, Math.floor(this.segs));
     this.body.instanceMatrix.needsUpdate = true;
   }
   die(killer, cause) {
@@ -1051,6 +1064,13 @@ class Snake {
   destroy() {
     scene.remove(this.body); scene.remove(this.headGroup);
     this.body.dispose();
+    if (this.body.material) this.body.material.dispose();
+    this.headGroup.traverse(o => {
+      if ((o.isMesh || o.isSprite) && o.material && !o.material.userData.shared) {
+        if (o.material.map) o.material.map.dispose();
+        o.material.dispose();
+      }
+    });
     const i = snakes.indexOf(this); if (i >= 0) snakes.splice(i, 1);
   }
 }
@@ -1278,6 +1298,7 @@ function rankOf(s) {
   return r;
 }
 const buffBar = $('buffBar');
+let lastChips = '', lastTasksHtml = null;
 let hudT = 0;
 function updateHUD(dt) {
   hudT -= dt;
@@ -1340,9 +1361,9 @@ function updateHUD(dt) {
       if (t > 0) chips += `<div class="chip"><i style="background:#${new THREE.Color(BUFF_DEFS[k].hex).getHexString()}"></i>${BUFF_DEFS[k].name}<small>${t.toFixed(0)}s</small></div>`;
     }
     if (stormActive()) chips += `<div class="chip"><i style="background:#9575cd"></i>风暴<small>${stormPhase === 'shrink' ? '缩圈中' : '已收拢'}</small></div>`;
-    buffBar.innerHTML = chips;
+    if (chips !== lastChips) { buffBar.innerHTML = chips; lastChips = chips; }
   } else {
-    buffBar.innerHTML = '';
+    if (lastChips !== '') { buffBar.innerHTML = ''; lastChips = ''; }
     renderTasks(null);
   }
 }
@@ -1450,7 +1471,7 @@ function onPlayerDeath(killer) {
   localStorage.setItem('sss3d_hist', JSON.stringify(hist.slice(0, 5)));
   setTimeout(() => {
     if (phase !== 'dead') return;
-    const killerTxt = killer ? `被 <b style="color:#${new THREE.Color(killer.hex).getHexString()}">${killer.name}</b> 终结` : '撞上了世界边界';
+    const killerTxt = player.deathCause === 'storm' ? '被 <b style="color:#9575cd">风暴</b> 吞噬' : killer ? `被 <b style="color:#${new THREE.Color(killer.hex).getHexString()}">${killer.name}</b> 终结` : '撞上了世界边界';
     $('deathInfo').innerHTML = `本局分数 <b>${sc}</b> · 长度 <b>${player.segs}</b> · 击杀 <b>${player.kills}</b><br>历史最佳 <b>${bestScore}</b>　${killerTxt}<br>存活 ${Math.floor(player.lifeTime)} 秒 · 成就累计 ${achUnlocked.size}/${ACH_DEFS.length}`;
     let h = '';
     loadHist().forEach((r, i) => { h += `${i + 1}. <b>${r.s}分</b> · ${r.l}节 · ${r.k}杀 · ${r.d}<br>`; });
@@ -1469,7 +1490,18 @@ function respawnPlayer() {
 let playerName = '无名小蛇', playerHex = PALETTE[0], playerPattern = 1;
 function startRun(name, hex, pattern) {
   playerName = name; playerHex = hex; playerPattern = pattern === undefined ? playerPattern : pattern;
-  if (player) { usedColors.delete(player.hex); usedNames.delete(player.name); player.destroy(); }
+  if (player) { usedColors.delete(player.hex); usedNames.delete(player.name); player.destroy(); player = null; }
+  for (let i = snakes.length - 1; i >= 0; i--) {
+    const s = snakes[i];
+    usedColors.delete(s.hex); usedNames.delete(s.name);
+    if (s === boss) boss = null;
+    s.destroy();
+  }
+  respawnQueue.length = 0;
+  gameTime = 0;
+  eventT = 30; frenzyT = 0; rainT = 0; rainAcc = 0; slowmoT = 0;
+  stormPhase = 'idle'; stormR = ARENA_R;
+  nextChordT = 0;
   const [x, z] = safeSpot(16);
   player = new Snake(name, hex, true, playerPattern);
   usedColors.add(hex); usedNames.add(name);
@@ -1479,8 +1511,8 @@ function startRun(name, hex, pattern) {
   player.tasks = makeTasks();
   player.spawnAt(x, z);
   renderTasks(player);
+  for (let i = 0; i < AI_N; i++) spawnAI();
   phase = 'play';
-  nextChordT = 0;
   $('menu').classList.add('hidden');
   $('hud').classList.remove('hidden');
   camState.pos.set(x - Math.cos(player.a) * 20, 20, z - Math.sin(player.a) * 20);
