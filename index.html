@@ -96,7 +96,7 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:"Segoe UI","Microso
 <div id="menu">
   <div class="card">
     <h1>贪吃蛇大作战</h1>
-    <div class="sub">3D 巨蛇修罗场 · 二十蛇混战 · 道具 + 成就 + 连击</div>
+    <div class="sub">3D 巨蛇修罗场 · 二十蛇混战 · 道具 + 成就 + 随机事件</div>
     <input id="nameInput" maxlength="8" placeholder="起个响亮的名字" value="无名小蛇">
     <div class="rowLabel">皮 肤 颜 色</div>
     <div id="skinRow"></div>
@@ -110,10 +110,17 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:"Segoe UI","Microso
       <span><i style="background:#ec407a"></i>双倍积分</span>
       <span><i style="background:#90a4ae"></i>幽灵穿身</span>
     </div>
+    <div class="rowLabel">随 机 事 件</div>
+    <div id="buffLegend">
+      <span><i style="background:#a5d6a7"></i>光点雨</span>
+      <span><i style="background:#f48fb1"></i>双倍狂欢</span>
+      <span><i style="background:#ffc107"></i>蛇王降临·击杀有赏</span>
+    </div>
     <button id="playBtn" class="bigBtn">开 战</button>
     <div class="ctrl-help">
       电脑：移动鼠标转向，按住左键或空格加速（会掉分）｜手机：拖动转向 + 加速按钮<br>
-      吃光点变长，撞别人身体即死，引诱对手撞你；金蛋=大分，快速连吃有连击加成
+      吃光点变长，撞别人身体即死；快速连吃有连击加成，击杀大蛇有赏金<br>
+      黄/蓝传送门让你瞬移全场；榜首戴金冠；击杀蛇王得巨额黄金
     </div>
   </div>
 </div>
@@ -523,6 +530,78 @@ function grantBuff(s, kind) {
   }
 }
 
+const portals = [];
+(function buildPortals() {
+  const hexes = [0x4dd0e1, 0xffb74d];
+  for (let i = 0; i < 2; i++) {
+    const a = rand(0, TAU) + i * Math.PI, d = rand(70, 150);
+    const grp = new THREE.Group();
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(3.4, 0.45, 8, 40), new THREE.MeshLambertMaterial({ color: hexes[i] }));
+    ring.rotation.x = Math.PI / 2; ring.position.y = 0.4;
+    const disc = new THREE.Mesh(new THREE.CircleGeometry(3.1, 32), new THREE.MeshBasicMaterial({ color: hexes[i], transparent: true, opacity: 0.28, side: THREE.DoubleSide, depthWrite: false }));
+    disc.rotation.x = -Math.PI / 2; disc.position.y = 0.4;
+    grp.add(ring); grp.add(disc);
+    grp.position.set(Math.cos(a) * d, 0, Math.sin(a) * d);
+    scene.add(grp);
+    portals.push({ x: grp.position.x, z: grp.position.z, hex: hexes[i], ring, disc });
+  }
+})();
+function teleportSnake(s, out) {
+  s.x = out.x + Math.cos(s.a) * 5.5;
+  s.z = out.z + Math.sin(s.a) * 5.5;
+  s.trail.clear(s.x, s.z);
+  for (let k = 1; k < 30; k++) s.trail.push(s.x - Math.cos(s.a) * k * 0.5, s.z - Math.sin(s.a) * k * 0.5);
+  s.portalCD = 3;
+  burst(out.x, 1, out.z, out.hex, 10, 6, 7);
+  burst(s.x, 1, s.z, out.hex, 10, 6, 7);
+  popRing(out.x, out.z, out.hex, 5);
+  if (s.isPlayer) {
+    sfx.pickup();
+    s.portalCount++;
+    addFeed('穿越传送门！', out.hex);
+    if (s.portalCount >= 10) unlockAch('portal10');
+    camState.pos.set(s.x - Math.cos(s.a) * 16, 14, s.z - Math.sin(s.a) * 16);
+    camState.look.set(s.x + Math.cos(s.a) * 7, 1.2, s.z + Math.sin(s.a) * 7);
+  }
+}
+
+function makeCrown() {
+  const parts = [];
+  const band = new THREE.TorusGeometry(0.95, 0.13, 6, 20); band.rotateX(Math.PI / 2);
+  parts.push(coloredGeo(band, 0xffc107));
+  for (let i = 0; i < 5; i++) {
+    const a = i / 5 * TAU;
+    parts.push(coloredGeo(new THREE.ConeGeometry(0.2, 0.55, 6), 0xffd54f, M.identity().makeTranslation(Math.cos(a) * 0.95, 0.42, Math.sin(a) * 0.95)));
+  }
+  const mesh = new THREE.Mesh(mergeGeos(parts), new THREE.MeshLambertMaterial({ vertexColors: true }));
+  mesh.position.y = 1.62;
+  mesh.visible = false;
+  return mesh;
+}
+
+let boss = null;
+function spawnBoss() {
+  if (boss && boss.alive) return;
+  const [x, z] = safeSpot(22);
+  boss = new Snake('蛇王·' + pickName(), 0xffc107, false, 2);
+  boss.isBoss = true;
+  boss.persona = { id: 'hunter', fleeR: 0.5, preyR: 3, boostP: 2, huntP: 1 };
+  snakes.push(boss);
+  boss.attachHead();
+  boss.score = 600;
+  boss.spawnAt(x, z);
+}
+
+let eventT = 30, frenzyT = 0, rainT = 0, rainAcc = 0, slowmoT = 0;
+function triggerEvent(kind) {
+  if (kind === 'foodRain') { rainT = 6; addToast('光点雨！', '全场疯狂撒粮 6 秒'); }
+  else if (kind === 'frenzy') { frenzyT = 10; addToast('双倍狂欢！', '全场吃食得分 ×2，持续 10 秒'); }
+  else if (kind === 'boss') {
+    spawnBoss();
+    if (boss) addToast('蛇王降临！', '击杀蛇王 +100 分与满地黄金');
+  }
+}
+
 const snakes = [];
 let player = null, phase = 'menu', gameTime = 0, shake = 0;
 const respawnQueue = [];
@@ -545,7 +624,11 @@ const ACH_DEFS = [
   { id: 'r1', name: '蛇王登基', desc: '登顶排行榜第一', chk: (p, r) => r === 1 && p.score > 100 },
   { id: 'all5', name: '集齐五宝', desc: '单局吃齐 5 种道具', chk: p => p.buffSet.size >= 5 },
   { id: 't120', name: '活得精彩', desc: '单局存活 120 秒', chk: p => p.lifeTime >= 120 },
-  { id: 'b60', name: '极速狂蛇', desc: '累计加速 60 秒', chk: p => p.boostTotal >= 60 }
+  { id: 'b60', name: '极速狂蛇', desc: '累计加速 60 秒', chk: p => p.boostTotal >= 60 },
+  { id: 's3000', name: '千金一蛇', desc: '单局分数达到 3000', chk: p => p.score >= 3000 },
+  { id: 'boss', name: '屠蛇者', desc: '击败降临的蛇王', chk: () => false },
+  { id: 'portal10', name: '传送大师', desc: '单局穿越传送门 10 次', chk: p => p.portalCount >= 10 },
+  { id: 'crown60', name: '王者风范', desc: '累计佩戴王冠 60 秒', chk: p => p.crownTime >= 60 }
 ];
 let achUnlocked = new Set(JSON.parse(localStorage.getItem('sss3d_ach') || '[]'));
 function unlockAch(id) {
@@ -581,6 +664,8 @@ class Snake {
     this.lifeTime = 0; this.boostTotal = 0;
     this.combo = 0; this.comboT = 0;
     this.killTimes = [];
+    this.portalCD = 0; this.portalCount = 0; this.crownTime = 0;
+    this.isBoss = false; this.isLeader = false;
     this.persona = PERSONAS[randi(0, PERSONAS.length - 1)];
     this.trail = new Trail();
     this.sx = new Float32Array(MAX_SEG); this.sz = new Float32Array(MAX_SEG);
@@ -602,6 +687,8 @@ class Snake {
     magRing.rotation.x = Math.PI / 2; magRing.visible = false;
     this.magRing = magRing;
     this.headGroup.add(magRing);
+    this.crown = makeCrown();
+    this.headGroup.add(this.crown);
     this.headGroup.visible = false;
     scene.add(this.headGroup);
   }
@@ -661,6 +748,17 @@ class Snake {
     if (this.a > Math.PI) this.a -= TAU; if (this.a < -Math.PI) this.a += TAU;
     this.x += Math.cos(this.a) * sp * dt;
     this.z += Math.sin(this.a) * sp * dt;
+    this.portalCD = Math.max(0, this.portalCD - dt);
+    if (this.portalCD <= 0) {
+      for (let pi = 0; pi < portals.length; pi++) {
+        const p = portals[pi];
+        if (dist2(this.x, this.z, p.x, p.z) < (this.r * 1.6 + 3.2) * (this.r * 1.6 + 3.2)) {
+          teleportSnake(this, portals[1 - pi]);
+          break;
+        }
+      }
+    }
+    if (this.alive && (this.isLeader || this.isBoss)) this.crownTime += dt;
     this.updateDerived();
     const last = this.trail.at(0);
     const dx = this.x - last[0], dz = this.z - last[1];
@@ -723,6 +821,9 @@ class Snake {
     }
     this.magRing.visible = this.magnetT > 0;
     if (this.magRing.visible) this.magRing.rotation.z += dt * 2;
+    const crownOn = this.isLeader || this.isBoss;
+    this.crown.visible = crownOn;
+    if (crownOn) { this.crown.rotation.y += dt * 2.2; this.crown.position.y = 1.62 + Math.sin(gameTime * 4) * 0.06; }
     for (let i = 0; i < this.segs; i++) {
       const taper = i > this.segs - 9 ? 1 - (i - (this.segs - 9)) / 9 * 0.68 : 1;
       const s = this.r * (i < 2 ? 1.04 : 1) * taper;
@@ -735,6 +836,25 @@ class Snake {
   die(killer) {
     if (!this.alive) return;
     this.alive = false; this.deaths++; this.deadT = gameTime;
+    if (this.isBoss) {
+      boss = null;
+      const bonus = 100 + Math.floor(this.score * 0.15);
+      for (let i = 0; i < this.segs; i += 2) {
+        const a = rand(0, TAU), d = rand(0, 2);
+        spawnFood(this.sx[i] + Math.cos(a) * d, this.sz[i] + Math.sin(a) * d, 4, 0xffd54f, true);
+      }
+      popRing(this.x, this.z, 0xffc107, 16);
+      burst(this.x, 1.4, this.z, 0xffd54f, 22, 10, 10);
+      if (killer && killer.alive) {
+        killer.kills++;
+        killer.score += bonus;
+        killer.killTimes.push(gameTime);
+        if (killer.isPlayer) { sfx.ach(); shake = 0.9; unlockAch('boss'); addToast('击败蛇王！', `+${bonus} 分与满地黄金`); }
+        addFeed(`${killer.name} 击败了蛇王（+${bonus}）`, 0xffc107);
+      } else addFeed('蛇王退场了', 0xffc107);
+      slowmoT = Math.max(slowmoT, 0.8);
+      return;
+    }
     const n = Math.floor(this.segs / 2);
     for (let i = 0; i < n; i++) {
       const a = rand(0, TAU), d = rand(0, 1.8);
@@ -743,18 +863,21 @@ class Snake {
     popRing(this.x, this.z, this.hex, 8 + this.r * 5);
     burst(this.x, 1.2, this.z, this.hex, 14, 8, 8);
     if (killer && killer.alive) {
+      const bounty = Math.min(30, 4 + Math.floor(this.score * 0.05));
       killer.kills++;
-      killer.score += 10;
+      killer.score += 10 + bounty;
       killer.killTimes.push(gameTime);
       killer.killTimes = killer.killTimes.filter(t => gameTime - t <= 4);
       if (killer.isPlayer) {
         sfx.kill(); shake = 0.5;
         if (killer.killTimes.length === 2) addToast('双杀！', '4 秒内终结两条蛇');
         if (killer.killTimes.length >= 3) addToast('多重击杀！', '势不可挡');
+        if (bounty >= 8) addFeed(`击杀赏金 +${bounty}`, 0xffc107);
       }
     }
     if (this.isPlayer) {
       sfx.die(); shake = 0.7;
+      slowmoT = Math.max(slowmoT, 1.1);
       onPlayerDeath(killer);
     } else if (player && player.alive && dist2(this.x, this.z, player.x, player.z) < 100 * 100) sfx.kill();
     addFeed(this.isPlayer ? `${this.name} 被终结了` : killer ? `${killer.name} 终结了 ${this.name}` : `${this.name} 撞墙了`, this.hex);
@@ -883,7 +1006,7 @@ function eatFoods(s) {
   const er = s.r * 1.2 + 0.6, er2 = er * er;
   const magnet = s.magnetT > 0;
   const mr = magnet ? 26 : 3.4 + s.r * 1.6, mr2 = mr * mr;
-  const mult = (s.doubleT > 0 ? 2 : 1);
+  const mult = (s.doubleT > 0 ? 2 : 1) * (frenzyT > 0 ? 2 : 1);
   for (let i = 0; i < FOOD_CAP; i++) {
     if (!foodAlive[i]) continue;
     const dx = s.x - FX[i], dz = s.z - FZ[i];
@@ -976,7 +1099,7 @@ function updateHUD(dt) {
   if (player) {
     rank = rankOf(player);
     $('hudScore').textContent = Math.floor(player.score);
-    $('hudLen').textContent = player.segs;
+    $('hudLen').textContent = Math.floor(player.segs);
     $('hudKills').textContent = player.kills;
     $('hudRank').textContent = player.alive ? '#' + rank : '-';
     if (player.alive) {
@@ -991,6 +1114,9 @@ function updateHUD(dt) {
       if (rank === 1 && sc > 100) unlockAch('r1');
       if (player.lifeTime >= 120) unlockAch('t120');
       if (player.boostTotal >= 60) unlockAch('b60');
+      if (sc >= 3000) unlockAch('s3000');
+      if (player.crownTime >= 60) unlockAch('crown60');
+      if (player.portalCount >= 10) unlockAch('portal10');
       if (player.kills >= 1) unlockAch('k1');
       if (player.kills >= 3) unlockAch('k3');
       if (player.kills >= 6) unlockAch('k6');
@@ -1037,9 +1163,9 @@ function drawMinimap() {
   }
   for (const s of snakes) {
     if (!s.alive) continue;
-    mmx.fillStyle = '#' + new THREE.Color(s.hex).getHexString();
-    mmx.beginPath(); mmx.arc(cx + s.x * k, cx + s.z * k, s.isPlayer ? 4.5 : 2.6, 0, TAU); mmx.fill();
-    if (s.isPlayer) { mmx.strokeStyle = '#fff'; mmx.lineWidth = 2; mmx.stroke(); }
+    mmx.fillStyle = '#' + new THREE.Color(s.isBoss ? 0xffc107 : s.hex).getHexString();
+    mmx.beginPath(); mmx.arc(cx + s.x * k, cx + s.z * k, s.isPlayer ? 4.5 : s.isBoss ? 5 : 2.6, 0, TAU); mmx.fill();
+    if (s.isPlayer || s.isBoss) { mmx.strokeStyle = '#fff'; mmx.lineWidth = 2; mmx.stroke(); }
   }
 }
 
@@ -1169,34 +1295,62 @@ function spawnAI() {
 let accSpawnGuard = 0;
 function update(dt) {
   lastDt = dt;
-  gameTime += dt;
-  cloudGroup.rotation.y += dt * 0.004;
+  if (slowmoT > 0) slowmoT -= dt;
+  const sdt = dt * (slowmoT > 0 ? 0.35 : 1);
+  gameTime += sdt;
+  cloudGroup.rotation.y += sdt * 0.004;
   musicTick();
+  eventT -= sdt;
+  if (eventT <= 0) {
+    eventT = rand(26, 40);
+    const roll = Math.random();
+    if (roll < 0.42) triggerEvent('foodRain');
+    else if (roll < 0.78) triggerEvent('frenzy');
+    else triggerEvent(boss && boss.alive ? 'foodRain' : 'boss');
+  }
+  if (rainT > 0) {
+    rainT -= sdt;
+    rainAcc += sdt;
+    while (rainAcc > 0.05) {
+      rainAcc -= 0.05;
+      const a = rand(0, TAU), d = Math.sqrt(Math.random()) * ARENA_R * 0.92;
+      spawnFood(Math.cos(a) * d, Math.sin(a) * d, 1, CANDY[randi(0, CANDY.length - 1)]);
+    }
+  }
+  if (frenzyT > 0) frenzyT -= sdt;
+  for (const p of portals) {
+    p.ring.rotation.z += sdt * 1.5;
+    p.disc.material.opacity = 0.24 + Math.sin(gameTime * 3) * 0.1;
+  }
   for (const r of rings) {
     if (r.life > 0) {
-      r.life -= dt;
+      r.life -= sdt;
       const f = 1 - r.life / r.max;
       r.mesh.scale.setScalar(1 + f * r.size);
       r.mesh.material.opacity = 0.8 * (1 - f);
       if (r.life <= 0) r.mesh.visible = false;
     }
   }
-  updateBuffs(dt);
+  updateBuffs(sdt);
   for (const s of snakes) {
     if (!s.alive) continue;
-    s.shield = Math.max(0, s.shield - dt);
+    s.shield = Math.max(0, s.shield - sdt);
     if (!s.isPlayer || AUTO) {
-      s.thinkT -= dt;
+      s.thinkT -= sdt;
       if (s.thinkT <= 0) { s.thinkT = 0.13 + rand(0, 0.05); aiThink(s); }
+      if (s.isBoss) s.wantBoost = true;
     } else {
       steerPlayer(s);
     }
     s.prevA = s.a;
-    s.move(dt);
-    s.turnVel = s.turnVel * 0.8 + (angDiff(s.prevA, s.a) / dt) * 0.2;
+    s.move(sdt);
+    s.turnVel = s.turnVel * 0.8 + (angDiff(s.prevA, s.a) / sdt) * 0.2;
     eatFoods(s);
   }
   collisions();
+  let leader = null;
+  for (const s of snakes) if (s.alive && (!leader || s.score > leader.score)) leader = s;
+  for (const s of snakes) s.isLeader = s === leader;
   for (let i = snakes.length - 1; i >= 0; i--) {
     const s = snakes[i];
     if (!s.alive && !s.isPlayer) {
@@ -1314,7 +1468,7 @@ for (let i = 0; i < AI_N; i++) spawnAI();
 
 window.__game = {
   get snakes() { return snakes; }, get player() { return player; }, get phase() { return phase; }, get time() { return gameTime; },
-  get foodAliveCount() { return foodAliveCount; }, get buffs() { return buffs; },
+  get foodAliveCount() { return foodAliveCount; }, get buffs() { return buffs; }, get boss() { return boss; },
   start: (n, c, p) => startRun(n || '测试蛇', c || PALETTE[0], p),
   coil() {
     if (!player || !player.alive) return 'no player';
@@ -1332,6 +1486,22 @@ window.__game = {
     player.a = player.targetA = dir;
     return { segs: player.segs, trail: player.trail.count };
   },
+  bossInfo() { return boss ? { alive: boss.alive, score: Math.floor(boss.score), segs: boss.segs, crown: boss.crown.visible } : null; },
+  spawnBossNow() { triggerEvent('boss'); return boss ? { alive: boss.alive, score: Math.floor(boss.score) } : 'failed'; },
+  killBoss() {
+    if (!boss || !boss.alive) return 'no boss';
+    const info = { killer: player && player.alive ? player.name : null, bonus: 100 + Math.floor(boss.score * 0.15) };
+    boss.die(player && player.alive ? player : null);
+    return { ...info, bossAlive: boss ? boss.alive : false, ach: achUnlocked.has('boss'), playerScore: player ? Math.floor(player.score) : 0 };
+  },
+  portalInfo() { return { count: portals.length, playerPortals: player ? player.portalCount : 0, cds: snakes.map(s => +s.portalCD.toFixed(1)) }; },
+  teleportNow() {
+    if (!player || !player.alive) return 'no player';
+    const before = [player.x, player.z];
+    teleportSnake(player, portals[1]);
+    return { moved: Math.hypot(player.x - before[0], player.z - before[1]) > 10, cd: player.portalCD };
+  },
+  triggerEventNow(kind) { triggerEvent(kind); return { rainT, frenzyT, boss: boss ? boss.alive : false }; },
   give(kind) { if (player && player.alive) grantBuff(player, kind); return player ? { [kind + 'T']: player[kind + 'T'] } : null; },
   achList() { return [...achUnlocked]; },
   bench(n) {
@@ -1344,8 +1514,9 @@ window.__game = {
     return {
       t: Math.floor(gameTime), phase, alive: alive.length,
       top: alive.slice(0, 5).map(s => ({ n: s.name, s: Math.floor(s.score), k: s.kills })),
-      player: player ? { s: Math.floor(player.score), k: player.kills, alive: player.alive, segs: player.segs, combo: player.combo, buffs: BUFF_KEYS.filter(k => player[k + 'T'] > 0) } : null,
-      foods: foodAliveCount, buffsOn: buffs.length
+      player: player ? { s: Math.floor(player.score), k: player.kills, alive: player.alive, segs: player.segs, combo: player.combo, buffs: BUFF_KEYS.filter(k => player[k + 'T'] > 0), crown: player.crown.visible, crownTime: +player.crownTime.toFixed(1), portals: player.portalCount } : null,
+      foods: foodAliveCount, buffsOn: buffs.length,
+      events: { rain: +rainT.toFixed(1), frenzy: +frenzyT.toFixed(1), boss: boss ? boss.alive : false }
     };
   }
 };
