@@ -925,8 +925,8 @@ function teleportSnake(s, out) {
     s.portalCount++;
     addFeed('穿越传送门！', out.hex);
     if (s.portalCount >= 10) unlockAch('portal10');
-    camState.pos.set(s.x - Math.cos(s.a) * 16, 14, s.z - Math.sin(s.a) * 16);
-    camState.look.set(s.x + Math.cos(s.a) * 7, 1.2, s.z + Math.sin(s.a) * 7);
+    camState.pos.set(s.x, 14, s.z + 16);
+    camState.look.set(s.x, 1.2, s.z - 6);
   }
 }
 
@@ -1896,21 +1896,16 @@ addEventListener('contextmenu', e => e.preventDefault());
 
 const V2 = new THREE.Vector3();
 function steerPlayer(s) {
-  if (IS_TOUCH) {
-    if (!input.joyActive) { s.targetA = s.a; return; }
-    const dx = input.mx - input.jx, dy = input.my - input.jy;
-    if (dx * dx + dy * dy < 196) { s.targetA = s.a; return; }
-    s.targetA = s.a + Math.atan2(dx, -dy);
-    return;
-  }
-  if (!input.hasMouse) { s.targetA = s.a; return; }
-  V2.set(s.x, s.r, s.z).project(camera);
-  const hx = (V2.x * 0.5 + 0.5) * innerWidth, hy = (-V2.y * 0.5 + 0.5) * innerHeight;
-  const dx = input.mx - hx, dy = input.my - hy;
-  const d = Math.hypot(dx, dy);
-  if (d < 70) { s.targetA = s.a; return; }
-  const rel = Math.atan2(dx, -dy) * Math.min(1, (d - 70) / 220);
-  s.targetA = s.a + rel;
+  V2.set((input.mx / innerWidth) * 2 - 1, -(input.my / innerHeight) * 2 + 1, 0.5).unproject(camera);
+  const dxr = V2.x - camera.position.x, dyr = V2.y - camera.position.y, dzr = V2.z - camera.position.z;
+  const len = Math.hypot(dxr, dyr, dzr) || 1;
+  const t = (0.9 - camera.position.y) / (dyr / len);
+  if (!(t > 0)) { s.targetA = s.a; return; }
+  const gx = camera.position.x + (dxr / len) * t, gz = camera.position.z + (dzr / len) * t;
+  const dx = gx - s.x, dz = gz - s.z;
+  const dead = s.r * 2.5 + 2;
+  if (dx * dx + dz * dz < dead * dead) { s.targetA = s.a; return; }
+  s.targetA = Math.atan2(dx, dz);
 }
 
 const camState = { pos: new THREE.Vector3(0, 60, 90), look: new THREE.Vector3() };
@@ -1926,11 +1921,9 @@ function updateCamera(dt) {
     camState.pos.lerp(V3.set(Math.cos(a) * 130, 80, Math.sin(a) * 130), Math.min(1, dt * 2));
     camState.look.lerp(V3.set(0, 0, 0), Math.min(1, dt * 2));
   } else {
-    const dir = V3.set(Math.cos(target.a), 0, Math.sin(target.a));
     const behind = 13 + target.r * 10, height = 10.5 + target.r * 9;
-    const want = S3.set(target.x - dir.x * behind, height, target.z - dir.z * behind);
-    camState.pos.lerp(want, Math.min(1, dt * 5));
-    camState.look.lerp(V3.set(target.x + dir.x * 7, 1.2, target.z + dir.z * 7), Math.min(1, dt * 5));
+    camState.pos.lerp(S3.set(target.x, height, target.z + behind), Math.min(1, dt * 5));
+    camState.look.lerp(V3.set(target.x, 1.2, target.z - 6), Math.min(1, dt * 5));
   }
   camera.position.copy(camState.pos);
   if (shake > 0) {
@@ -2009,7 +2002,8 @@ function startRun(name, hex, pattern) {
   }
   $('menu').classList.add('hidden');
   $('hud').classList.remove('hidden');
-  camState.pos.set(x - Math.cos(player.a) * 20, 20, z - Math.sin(player.a) * 20);
+  camState.pos.set(x, 20, z + 20);
+  camState.look.set(x, 1.2, z - 6);
 }
 
 function spawnAI() {
