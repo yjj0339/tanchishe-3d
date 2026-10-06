@@ -3,11 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>贪吃蛇大作战 3D · 幻彩大陆</title>
+<title>贪吃蛇大作战 3D · 雾都山城</title>
 <link rel="icon" href="data:,">
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{width:100%;height:100%;overflow:hidden;font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;touch-action:none;user-select:none;-webkit-user-select:none}
+html,body{width:100%;height:100%;overflow:hidden;font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;touch-action:none;user-select:none;-webkit-user-select:none;overscroll-behavior:none;position:fixed;inset:0}
 #c3d{position:fixed;inset:0;display:block}
 .hidden{display:none!important}
 #menu{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:30;background:radial-gradient(ellipse at 50% 28%,rgba(255,255,255,.55),rgba(255,255,255,.88));overflow-y:auto}
@@ -100,7 +100,7 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:"Segoe UI","Microso
   .skin{width:27px;height:27px}
   .hudBtn{font-size:12px;padding:5px 11px}
   #toastBox{top:56px;width:92vw}
-  #topBtns{top:auto;bottom:30px;bottom:calc(30px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%)}
+  #topBtns{top:45%;bottom:auto;left:auto;right:8px;transform:translateY(-50%);flex-direction:column;align-items:flex-end;gap:6px}
   .toast{font-size:13px;padding:7px 16px}
 }
 @media (pointer:fine){#boostBtn{display:none}}
@@ -114,7 +114,7 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:"Segoe UI","Microso
 <div id="menu">
   <div class="card">
     <h1>贪吃蛇大作战</h1>
-    <div class="sub">5.0 幻彩大陆 · 二十蛇混战 · 风暴缩圈 · 昼夜六境</div>
+    <div class="sub">5.2 雾都山城 · 二十蛇混战 · 两江交汇 · 风暴缩圈</div>
     <input id="nameInput" maxlength="8" placeholder="起个响亮的名字" value="无名小蛇">
     <div class="rowLabel">皮 肤 颜 色</div>
     <div id="skinRow"></div>
@@ -142,10 +142,11 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:"Segoe UI","Microso
     </div>
     <button id="playBtn" class="bigBtn">开 战</button>
     <div class="ctrl-help">
-      电脑：移动鼠标转向，按住左键或空格加速（会掉分）｜手机：拖动转向 + 加速按钮<br>
-      吃光点变长，撞别人身体即死；快速连吃有连击加成，击杀大蛇有赏金<br>
-      黄/蓝传送门让你瞬移全场；榜首戴金冠；击杀蛇王得巨额黄金<br>
-      90 秒后风暴缩圈：圈外持续掉分，归零即被风暴吞噬——抢占安全区！
+      电脑：移动鼠标转向，按住左键或空格加速（会掉分）<br>
+      手机：手指拖动转向，双指同时按或「加速」按钮冲刺<br>
+      中央是朝天门两江交汇：入江加速 18%，湖中银鱼 4 分<br>
+      撞别人身体即死；连吃有连击加成；黄/蓝传送门瞬移；榜首戴金冠<br>
+      90 秒后风暴缩圈：圈外持续掉分，归零即被吞噬——抢占安全区！
     </div>
   </div>
 </div>
@@ -180,6 +181,8 @@ import { GLTFLoader } from './vendor/addons/GLTFLoader.js';
 
 const qs = new URLSearchParams(location.search);
 const AUTO = qs.get('auto') === '1';
+const IS_TOUCH = matchMedia('(pointer:coarse)').matches;
+function buzz(ms) { if (IS_TOUCH && navigator.vibrate) { try { navigator.vibrate(ms); } catch (e) { } } }
 const ARENA_R = 220, FOOD_N = 800, FOOD_CAP = 1700, AI_N = 19, MAX_SEG = 300, TRAIL_N = 1600;
 const BASE_SPEED = 20, BOOST_MULT = 1.75;
 
@@ -211,7 +214,14 @@ renderer.setSize(innerWidth, innerHeight);
 const scene = new THREE.Scene();
 scene.fog = new THREE.Fog(0xf2faff, 200, 560);
 const camera = new THREE.PerspectiveCamera(62, innerWidth / innerHeight, 0.1, 1100);
-addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight;
+  const portrait = innerHeight > innerWidth * 1.05;
+  camera.fov = portrait ? 72 : 62;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+(function initFov() { camera.fov = innerHeight > innerWidth * 1.05 ? 72 : 62; camera.updateProjectionMatrix(); })();
 
 (function sky() {
   const c = document.createElement('canvas'); c.width = 2; c.height = 256;
@@ -325,17 +335,44 @@ let groundMat = null;
     g.beginPath(); g.moveTo(C, C); g.lineTo(C + Math.cos(a) * C, C + Math.sin(a) * C); g.stroke();
   }
   const LR = 48 * PXU;
-  const lg = g.createRadialGradient(C, C, LR * 0.2, C, C, LR);
-  lg.addColorStop(0, '#7ec3ea'); lg.addColorStop(0.75, '#a5d8f2'); lg.addColorStop(1, '#c8e9fa');
-  g.fillStyle = lg;
-  g.beginPath(); g.arc(C, C, LR, 0, TAU); g.fill();
+  const lw = -LR * 0.18;
+  g.save();
+  g.beginPath(); g.arc(C, C, LR, 0, TAU); g.clip();
+  g.fillStyle = '#dcc98f';
+  g.fillRect(C - LR, C - LR, LR * 2, LR * 2);
+  g.fillStyle = '#96cfbf';
+  g.beginPath();
+  g.moveTo(C - LR, C - LR);
+  for (let yy = -LR; yy <= LR; yy += 8) {
+    g.lineTo(C + lw + Math.sin(yy * 0.03) * LR * 0.12, C + yy);
+  }
+  g.lineTo(C + LR, C - LR);
+  g.closePath(); g.fill();
+  g.strokeStyle = 'rgba(255,255,255,0.55)'; g.lineWidth = 4;
+  g.beginPath();
+  for (let yy = -LR; yy <= LR; yy += 8) {
+    const xx = C + lw + Math.sin(yy * 0.03) * LR * 0.12;
+    if (yy === -LR) g.moveTo(xx, C + yy); else g.lineTo(xx, C + yy);
+  }
+  g.stroke();
+  g.strokeStyle = 'rgba(255,255,255,0.35)'; g.lineWidth = 3;
+  for (let w = 0; w < 8; w++) {
+    const wr = LR * rand(0.2, 0.85), wa = rand(0, TAU);
+    g.beginPath(); g.arc(C + Math.cos(wa) * wr, C + Math.sin(wa) * wr, rand(10, 26), wa, wa + rand(1.0, 2.2)); g.stroke();
+  }
+  g.strokeStyle = '#f5f5f5'; g.lineWidth = 10;
+  g.beginPath(); g.moveTo(C - LR - 30, C - LR * 0.5); g.lineTo(C + LR + 30, C - LR * 0.72); g.stroke();
+  g.strokeStyle = '#e0e0e0'; g.lineWidth = 4;
+  for (let px2 = -LR; px2 <= LR; px2 += 26) {
+    g.beginPath(); g.moveTo(C + px2, C - LR * 0.5 + (px2 / (LR + 30)) * 0); g.stroke();
+  }
+  g.fillStyle = '#eceff1';
+  [[-LR * 0.55, -LR * 0.53], [LR * 0.55, -LR * 0.75]].forEach(([tx, ty]) => {
+    g.fillRect(C + tx - 6, C + ty - 22, 12, 44);
+  });
+  g.restore();
   g.strokeStyle = 'rgba(255,255,255,0.75)'; g.lineWidth = 6;
   g.beginPath(); g.arc(C, C, LR, 0, TAU); g.stroke();
-  g.strokeStyle = 'rgba(255,255,255,0.35)'; g.lineWidth = 3;
-  for (let w = 0; w < 7; w++) {
-    const wa = rand(0, TAU), wr = LR * rand(0.25, 0.8);
-    g.beginPath(); g.arc(C + Math.cos(wa) * wr, C + Math.sin(wa) * wr, rand(12, 30), wa, wa + rand(1.2, 2.4)); g.stroke();
-  }
   g.beginPath(); g.arc(C, C, ARENA_R * PXU, 0, TAU); g.stroke();
   const tex = new THREE.CanvasTexture(c);
   tex.colorSpace = THREE.SRGBColorSpace;
@@ -348,6 +385,7 @@ const LAKE_R = 48;
 const waterMesh = new THREE.Mesh(new THREE.CircleGeometry(LAKE_R, 48), new THREE.MeshLambertMaterial({ color: 0x9fd8f5, transparent: true, opacity: 0.5 }));
 waterMesh.rotation.x = -Math.PI / 2; waterMesh.position.y = 0.09;
 waterMesh.updateMatrix(); waterMesh.matrixAutoUpdate = false;
+waterMesh.visible = false;
 scene.add(waterMesh);
 const foamRing = new THREE.Mesh(new THREE.TorusGeometry(LAKE_R, 0.35, 6, 64), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.45 }));
 foamRing.rotation.x = -Math.PI / 2; foamRing.position.y = 0.14;
@@ -428,6 +466,88 @@ let lakeRippleT = 1;
   const flowerMesh = new THREE.Mesh(mergeGeos(flowerParts), new THREE.MeshLambertMaterial({ vertexColors: true }));
   flowerMesh.matrixAutoUpdate = false;
   scene.add(flowerMesh);
+})();
+(function chongqingLandmarks() {
+  const parts = [];
+  const put = (geo, hex, x, y, z, rx, ry, rz) => {
+    const m = M.identity().makeTranslation(x, y, z);
+    if (rx || ry || rz) m.multiply(new THREE.Matrix4().makeRotationFromEuler(new THREE.Euler(rx || 0, ry || 0, rz || 0)));
+    parts.push(coloredGeo(geo, hex, m));
+  };
+  for (let i = 0; i < 7; i++) {
+    const a = -Math.PI / 2 + (i - 3) * 0.26;
+    const bx = Math.cos(a) * (LAKE_R + 9), bz = Math.sin(a) * (LAKE_R + 9);
+    const stack = randi(3, 5);
+    for (let f = 0; f < stack; f++) {
+      const w = rand(2.4, 3.6) - f * 0.25, h = 1.5;
+      put(new THREE.BoxGeometry(w, h, w * 0.7), f % 2 ? 0xffd180 : 0xffc266, bx + rand(-0.3, 0.3), 0.8 + f * h, bz + rand(-0.3, 0.3));
+      put(new THREE.BoxGeometry(w * 0.9, 0.3, w * 0.6), 0xfff3c2, bx, 0.8 + f * h + h / 2, bz);
+    }
+    put(new THREE.ConeGeometry(0.5, 1.1, 4), 0xd84315, bx, 0.8 + stack * 1.5 + 0.4, bz);
+  }
+  put(new THREE.CylinderGeometry(1.5, 1.9, 7.5, 10), 0xf5f5f5, 0, LAKE_R + 22, 0);
+  put(new THREE.CylinderGeometry(0.16, 0.16, 2.6, 6), 0xffca28, 0, LAKE_R + 26.8, 0);
+  put(new THREE.CylinderGeometry(1.7, 1.7, 0.5, 10), 0xe0e0e0, 0, LAKE_R + 22.9, 0);
+  for (let i = 0; i < 16; i++) {
+    const a = i / 16 * TAU;
+    const mx = Math.cos(a) * rand(ARENA_R + 24, ARENA_R + 62), mz = Math.sin(a) * rand(ARENA_R + 24, ARENA_R + 62);
+    const mh = rand(9, 22), mr = rand(6, 12);
+    put(new THREE.ConeGeometry(mr, mh, 7), 0x8fc48a, mx, mh * 0.32, mz);
+    put(new THREE.ConeGeometry(mr * 0.62, mh * 0.5, 7), 0xa8d3a2, mx + mr * 0.35, mh * 0.3, mz + mr * 0.3);
+  }
+  const mountainMesh = new THREE.Mesh(mergeGeos(parts), new THREE.MeshLambertMaterial({ vertexColors: true }));
+  mountainMesh.matrixAutoUpdate = false;
+  scene.add(mountainMesh);
+  const railR = LAKE_R + 6.5;
+  const railTrack = new THREE.Mesh(new THREE.TorusGeometry(railR, 0.22, 6, 72), new THREE.MeshLambertMaterial({ color: 0x90a4ae }));
+  railTrack.rotation.x = Math.PI / 2; railTrack.position.y = 2.6;
+  railTrack.updateMatrix(); railTrack.matrixAutoUpdate = false;
+  scene.add(railTrack);
+  const pillars = [];
+  for (let i = 0; i < 10; i++) {
+    const a = i / 10 * TAU + 0.31;
+    pillars.push(coloredGeo(new THREE.CylinderGeometry(0.28, 0.34, 2.6, 6), 0xb0bec5, M.identity().makeTranslation(Math.cos(a) * railR, 1.3, Math.sin(a) * railR)));
+  }
+  const bldA = 0.6;
+  const bl = new THREE.Group();
+  const bMesh = new THREE.Mesh(mergeGeos(pillars.concat([
+    coloredGeo(new THREE.BoxGeometry(5, 6.5, 4.5), 0xffe0b2, M.identity().makeTranslation(0, 3.25, 0)),
+    coloredGeo(new THREE.BoxGeometry(5.3, 0.4, 4.8), 0xef9a9a, M.identity().makeTranslation(0, 6.5, 0)),
+    coloredGeo(new THREE.BoxGeometry(5.3, 0.4, 4.8), 0xef9a9a, M.identity().makeTranslation(0, 4.2, 0))
+  ])), new THREE.MeshLambertMaterial({ vertexColors: true }));
+  bl.add(bMesh);
+  bl.position.set(Math.cos(bldA) * railR, 0, Math.sin(bldA) * railR);
+  bl.lookAt(0, bl.position.y, 0);
+  scene.add(bl);
+  const train = new THREE.Group();
+  const carGeo = new THREE.CapsuleGeometry(0.55, 1.7, 4, 8); carGeo.rotateZ(Math.PI / 2);
+  for (let c = 0; c < 3; c++) {
+    const car = new THREE.Mesh(carGeo, new THREE.MeshLambertMaterial({ color: c === 0 ? 0x4fc3f7 : 0xb3e5fc }));
+    car.position.x = (c - 1) * 2.0;
+    train.add(car);
+  }
+  train.position.y = 3.2;
+  scene.add(train);
+  train.userData.railR = railR;
+  window.__rail = { train, railR, ang: 0 };
+  const cabA = new THREE.Vector3(-ARENA_R * 0.55, 0, -ARENA_R * 0.4);
+  const cabB = new THREE.Vector3(ARENA_R * 0.55, 0, ARENA_R * 0.4);
+  const CBL = cabA.distanceTo(cabB);
+  const mid = cabA.clone().add(cabB).multiplyScalar(0.5);
+  const cable = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, CBL + 8, 5), new THREE.MeshBasicMaterial({ color: 0x78909c }));
+  cable.position.copy(mid); cable.position.y = 15;
+  cable.lookAt(cabB.x, 15, cabB.z);
+  cable.rotateX(Math.PI / 2);
+  scene.add(cable);
+  const mkCab = () => {
+    const c = new THREE.Group();
+    const box = new THREE.Mesh(new THREE.BoxGeometry(1.6, 1.5, 2.2), new THREE.MeshLambertMaterial({ color: 0xe57373 }));
+    box.position.y = -0.9;
+    c.add(box);
+    scene.add(c);
+    return c;
+  };
+  window.__cable = { a: cabA, b: cabB, c1: mkCab(), c2: mkCab(), t: 0 };
 })();
 const cloudGroup = new THREE.Group();
 (function clouds() {
@@ -1331,14 +1451,14 @@ class Snake {
       killer.killTimes.push(gameTime);
       killer.killTimes = killer.killTimes.filter(t => gameTime - t <= 4);
       if (killer.isPlayer) {
-        sfx.kill(); shake = 0.5;
+        sfx.kill(); shake = 0.5; buzz(35);
         if (killer.killTimes.length === 2) addToast('双杀！', '4 秒内终结两条蛇');
         if (killer.killTimes.length >= 3) addToast('多重击杀！', '势不可挡');
         if (bounty >= 8) addFeed(`击杀赏金 +${bounty}`, 0xffc107);
       }
     }
     if (this.isPlayer) {
-      sfx.die(); shake = 0.7;
+      sfx.die(); shake = 0.7; buzz(90);
       slowmoT = Math.max(slowmoT, 1.1);
       this.deathCause = cause || (killer ? 'kill' : 'wall');
       onPlayerDeath(killer);
@@ -1694,6 +1814,10 @@ function drawMinimap() {
     mmx.beginPath(); mmx.arc(cx + FX[starIdx] * k, cx + FZ[starIdx] * k, 3 + Math.sin(gameTime * 6) * 1.5, 0, TAU); mmx.fill();
     mmx.strokeStyle = '#ffd740'; mmx.lineWidth = 1.6; mmx.stroke();
   }
+  mmx.fillStyle = 'rgba(150,207,191,0.85)';
+  mmx.beginPath(); mmx.moveTo(cx, cx); mmx.arc(cx, cx, LAKE_R * k, Math.PI / 2, Math.PI * 1.5); mmx.closePath(); mmx.fill();
+  mmx.fillStyle = 'rgba(220,201,143,0.85)';
+  mmx.beginPath(); mmx.moveTo(cx, cx); mmx.arc(cx, cx, LAKE_R * k, Math.PI * 1.5, Math.PI / 2); mmx.closePath(); mmx.fill();
   if (stormActive()) {
     mmx.strokeStyle = '#9575cd'; mmx.lineWidth = 2.5;
     mmx.setLineDash([4, 3]);
@@ -1713,7 +1837,7 @@ function drawMinimap() {
   }
 }
 
-const input = { mx: innerWidth / 2, my: innerHeight / 2, mouseDown: false, keyBoost: false, joyId: -1, jx: 0, jy: 0, joyActive: false };
+const input = { mx: innerWidth / 2, my: innerHeight / 2, mouseDown: false, keyBoost: false, joyId: -1, jx: 0, jy: 0, joyActive: false, boost2nd: false };
 addEventListener('mousemove', e => { input.mx = e.clientX; input.my = e.clientY; });
 addEventListener('mousedown', e => { if (e.button === 0) input.mouseDown = true; });
 addEventListener('mouseup', e => { if (e.button === 0) input.mouseDown = false; });
@@ -1721,14 +1845,24 @@ addEventListener('keydown', e => { if (e.code === 'Space') { input.keyBoost = tr
 addEventListener('keyup', e => { if (e.code === 'Space') input.keyBoost = false; });
 cvs.addEventListener('touchstart', e => {
   e.preventDefault();
-  const t = e.changedTouches[0];
-  input.joyId = t.identifier; input.jx = t.clientX; input.jy = t.clientY; input.joyActive = true;
+  if (input.joyId < 0) {
+    const t = e.changedTouches[0];
+    input.joyId = t.identifier; input.jx = t.clientX; input.jy = t.clientY; input.joyActive = true;
+  } else {
+    input.boost2nd = true;
+  }
 }, { passive: false });
 cvs.addEventListener('touchmove', e => {
   e.preventDefault();
   for (const t of e.changedTouches) if (t.identifier === input.joyId) { input.mx = t.clientX; input.my = t.clientY; }
 }, { passive: false });
-const endTouch = e => { for (const t of e.changedTouches) if (t.identifier === input.joyId) input.joyActive = false; };
+const endTouch = e => {
+  for (const t of e.changedTouches) {
+    if (t.identifier === input.joyId) input.joyActive = false;
+    input.boost2nd = false;
+  }
+  if (e.touches.length === 0) { input.joyId = -1; input.joyActive = false; input.boost2nd = false; }
+};
 cvs.addEventListener('touchend', endTouch);
 cvs.addEventListener('touchcancel', endTouch);
 const boostBtn = $('boostBtn');
@@ -1868,6 +2002,21 @@ function update(dt) {
     const sdt = dt * (slowmoT > 0 ? 0.35 : 1);
     gameTime += sdt;
     cloudGroup.rotation.y += sdt * 0.004;
+  const rail = window.__rail;
+  if (rail) {
+    rail.ang += sdt * 0.045;
+    rail.train.position.set(Math.cos(rail.ang) * rail.railR, 3.2, Math.sin(rail.ang) * rail.railR);
+    rail.train.rotation.y = -rail.ang;
+  }
+  const cb = window.__cable;
+  if (cb) {
+    cb.t = (cb.t + sdt * 0.014) % 2;
+    const tt = cb.t < 1 ? cb.t : 2 - cb.t;
+    const tp = cb.a.clone().lerp(cb.b, tt);
+    cb.c1.position.set(tp.x, 14.2, tp.z);
+    const tp2 = cb.a.clone().lerp(cb.b, 1 - tt);
+    cb.c2.position.set(tp2.x, 14.2, tp2.z);
+  }
   musicTick();
   applyDayNight(sdt);
   starTick(sdt);
@@ -1943,6 +2092,7 @@ function update(dt) {
       if (s.isBoss) s.wantBoost = true;
     } else {
       steerPlayer(s);
+      s.wantBoost = input.mouseDown || input.keyBoost || input.boost2nd;
     }
     s.prevA = s.a;
     s.move(sdt);
@@ -2038,7 +2188,7 @@ function update(dt) {
 }
 
 const QUALS = [[2, '高清'], [1.5, '均衡'], [1, '流畅']];
-let qualI = +(localStorage.getItem('sss3d_qual') || 0);
+let qualI = +(localStorage.getItem('sss3d_qual') ?? (IS_TOUCH ? 1 : 0));
 function applyQual() {
   renderer.setPixelRatio(Math.min(devicePixelRatio, QUALS[qualI][0]));
   localStorage.setItem('sss3d_qual', qualI);
@@ -2089,6 +2239,17 @@ const menu = $('menu'), nameInput = $('nameInput'), playBtn = $('playBtn');
     b.onclick = () => { document.querySelectorAll('#hatRow .pat').forEach(e => e.classList.remove('sel')); b.classList.add('sel'); localStorage.setItem('sss3d_hat', v); sfx.click(); };
     hr.appendChild(b);
   });
+  if (document.documentElement.requestFullscreen) {
+    const fb = document.createElement('button');
+    fb.className = 'hudBtn';
+    fb.textContent = '全屏';
+    fb.onclick = () => {
+      if (document.fullscreenElement) document.exitFullscreen();
+      else document.documentElement.requestFullscreen().catch(() => { });
+      sfx.click();
+    };
+    $('topBtns').appendChild(fb);
+  }
   const savedName = localStorage.getItem('sss3d_name');
   if (savedName) nameInput.value = savedName;
 })();
