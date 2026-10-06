@@ -183,7 +183,7 @@ const qs = new URLSearchParams(location.search);
 const AUTO = qs.get('auto') === '1';
 const IS_TOUCH = matchMedia('(pointer:coarse)').matches;
 function buzz(ms) { if (IS_TOUCH && navigator.vibrate) { try { navigator.vibrate(ms); } catch (e) { } } }
-const ARENA_R = 220, FOOD_N = 800, FOOD_CAP = 1700, AI_N = 19, MAX_SEG = 300, TRAIL_N = 1600;
+const ARENA_R = 220, FOOD_N = 800, FOOD_CAP = 1700, AI_N = 19, MAX_SEG = 300, RENDER_SEG = 520, TRAIL_N = 1600;
 const BASE_SPEED = 20, BOOST_MULT = 1.75;
 
 const PALETTE = [0xef5350, 0xff9800, 0xffd600, 0x9ccc65, 0x00c853, 0x00bfa5, 0x00b0ff, 0x2979ff, 0x7c4dff, 0xd500f9, 0xec407a, 0xff6d00, 0x00e5ff, 0xaeea00, 0xf06292, 0x8d6e63, 0x5c6bc0, 0x26a69a, 0xffa726, 0x66bb6a, 0xef9a9a, 0x80cbc4, 0x9fa8da, 0xb0bec5];
@@ -1220,9 +1220,10 @@ class Snake {
     this.persona = PERSONAS[randi(0, PERSONAS.length - 1)];
     this.trail = new Trail();
     this.sx = new Float32Array(MAX_SEG); this.sz = new Float32Array(MAX_SEG);
+    this.rsx = new Float32Array(RENDER_SEG); this.rsz = new Float32Array(RENDER_SEG);
     this.segs = segCountOf(this.score); this.r = radiusOf(this.score); this.spacing = this.r * 0.55;
     const mat = new THREE.MeshLambertMaterial({ color: 0xffffff, transparent: true });
-    this.body = new THREE.InstancedMesh(bodyGeo, mat, MAX_SEG);
+    this.body = new THREE.InstancedMesh(bodyGeo, mat, RENDER_SEG);
     this.body.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     this.body.frustumCulled = false;
     this.paintBody();
@@ -1244,7 +1245,7 @@ class Snake {
     scene.add(this.headGroup);
   }
   paintBody() {
-    const hex = this.hex, n = MAX_SEG;
+    const hex = this.hex, n = RENDER_SEG;
     for (let i = 0; i < n; i++) {
       let c = C1.setHex(hex);
       if (this.pattern === 1) { if (i % 4 >= 2) c.setHex(darker(hex, 0.62)); }
@@ -1256,7 +1257,7 @@ class Snake {
   }
   paintTint(hex, t) {
     const c = new THREE.Color(), icy = C1.setHex(hex);
-    for (let i = 0; i < MAX_SEG; i++) {
+    for (let i = 0; i < RENDER_SEG; i++) {
       this.body.getColorAt(i, c);
       c.lerp(icy, t);
       this.body.setColorAt(i, c);
@@ -1325,6 +1326,7 @@ class Snake {
     const dx = this.x - this.trail.atX(0), dz = this.z - this.trail.atZ(0);
     if (dx * dx + dz * dz >= 0.09) this.trail.push(this.x, this.z);
     this.sampleSegs();
+    this.sampleRender();
     this.magnetT = Math.max(0, this.magnetT - dt);
     this.shieldT = Math.max(0, this.shieldT - dt);
     this.swiftT = Math.max(0, this.swiftT - dt);
@@ -1353,6 +1355,26 @@ class Snake {
       acc += d; bx = qx; bz = qz; k++;
     }
     while (i < n) { this.sx[i] = bx; this.sz[i] = bz; i++; }
+  }
+  sampleRender() {
+    const T = this.trail, n = RENDER_SEG, sp = this.spacing * 0.59;
+    let i = 0, acc = 0, k = 0;
+    let bx = this.x, bz = this.z;
+    const kMax = T.count - 1;
+    while (i < n && k < kMax) {
+      const idx = ((T.head - k - 1) % TRAIL_N + TRAIL_N) % TRAIL_N;
+      const qx = T.x[idx], qz = T.z[idx];
+      const d = Math.hypot(bx - qx, bz - qz);
+      while (i < n && acc + d >= (i + 0.5) * sp) {
+        const target = (i + 0.5) * sp;
+        const f = (target - acc) / (d || 1);
+        this.rsx[i] = bx + (qx - bx) * f;
+        this.rsz[i] = bz + (qz - bz) * f;
+        i++;
+      }
+      acc += d; bx = qx; bz = qz; k++;
+    }
+    while (i < n) { this.rsx[i] = bx; this.rsz[i] = bz; i++; }
   }
   syncMeshes(dt) {
     const boosting = this.boost;
@@ -1386,24 +1408,26 @@ class Snake {
     const crownOn = this.isLeader || this.isBoss;
     this.crown.visible = crownOn;
     if (crownOn) { this.crown.rotation.y += dt * 2.2; this.crown.position.y = 1.62 + Math.sin(gameTime * 4) * 0.06; }
+    const rSeg = Math.min(RENDER_SEG, Math.max(2, Math.floor(this.segs * 1.7)));
     const wAmp = Math.min(this.r * 0.3, this.spacing * 0.55);
-    for (let i = 0; i < this.segs; i++) {
-      const taper = i > this.segs - 9 ? 1 - (i - (this.segs - 9)) / 9 * 0.68 : 1;
-      let s = this.r * (i < 2 ? 1.04 : 1) * taper;
-      s *= 1 + 0.055 * Math.sin(this.walk * 0.14 - i * 0.4);
-      let px = this.sx[i], pz = this.sz[i];
+    for (let i = 0; i < rSeg; i++) {
+      const li = i / 1.7;
+      const taper = li > this.segs - 9 ? 1 - (li - (this.segs - 9)) / 9 * 0.68 : 1;
+      let s = this.r * 1.16 * (i < 3 ? 1.05 : 1) * taper;
+      s *= 1 + 0.05 * Math.sin(this.walk * 0.14 - i * 0.24);
+      let px = this.rsx[i], pz = this.rsz[i];
       if (i > 0) {
-        const wTaper = i < 4 ? i / 4 : (i > this.segs - 4 ? (this.segs - i) / 4 : 1);
-        const dx = px - this.sx[i - 1], dz = pz - this.sz[i - 1];
+        const wTaper = i < 6 ? i / 6 : (i > rSeg - 6 ? (rSeg - i) / 6 : 1);
+        const dx = px - this.rsx[i - 1], dz = pz - this.rsz[i - 1];
         const len = Math.hypot(dx, dz) || 1;
-        const off = Math.sin(this.walk * 0.1 - i * 0.5) * wAmp * wTaper;
+        const off = Math.sin(this.walk * 0.1 - i * 0.3) * wAmp * wTaper;
         px += (-dz / len) * off;
         pz += (dx / len) * off;
       }
       M.compose(V3.set(px, this.r * 0.92, pz), Q0.identity(), S3.set(s, s, s));
       this.body.setMatrixAt(i, M);
     }
-    this.body.count = Math.max(1, Math.floor(this.segs));
+    this.body.count = rSeg;
     this.body.instanceMatrix.needsUpdate = true;
     if (this.slowT > 0 && !this.frozenPainted) { this.paintTint(0x81d4fa, 0.5); this.frozenPainted = true; }
     else if (this.slowT <= 0 && this.frozenPainted) { this.paintBody(); this.frozenPainted = false; }
@@ -1837,8 +1861,8 @@ function drawMinimap() {
   }
 }
 
-const input = { mx: innerWidth / 2, my: innerHeight / 2, mouseDown: false, keyBoost: false, joyId: -1, jx: 0, jy: 0, joyActive: false, boost2nd: false };
-addEventListener('mousemove', e => { input.mx = e.clientX; input.my = e.clientY; });
+const input = { mx: innerWidth / 2, my: innerHeight / 2, mouseDown: false, keyBoost: false, joyId: -1, jx: 0, jy: 0, joyActive: false, boost2nd: false, hasMouse: false };
+addEventListener('mousemove', e => { input.mx = e.clientX; input.my = e.clientY; input.hasMouse = true; });
 addEventListener('mousedown', e => { if (e.button === 0) input.mouseDown = true; });
 addEventListener('mouseup', e => { if (e.button === 0) input.mouseDown = false; });
 addEventListener('keydown', e => { if (e.code === 'Space') { input.keyBoost = true; e.preventDefault(); } });
@@ -1872,13 +1896,21 @@ addEventListener('contextmenu', e => e.preventDefault());
 
 const V2 = new THREE.Vector3();
 function steerPlayer(s) {
+  if (IS_TOUCH) {
+    if (!input.joyActive) { s.targetA = s.a; return; }
+    const dx = input.mx - input.jx, dy = input.my - input.jy;
+    if (dx * dx + dy * dy < 196) { s.targetA = s.a; return; }
+    s.targetA = s.a + Math.atan2(dx, -dy);
+    return;
+  }
+  if (!input.hasMouse) { s.targetA = s.a; return; }
   V2.set(s.x, s.r, s.z).project(camera);
   const hx = (V2.x * 0.5 + 0.5) * innerWidth, hy = (-V2.y * 0.5 + 0.5) * innerHeight;
   const dx = input.mx - hx, dy = input.my - hy;
-  if (dx * dx + dy * dy < 100) return;
-  const rel = Math.atan2(dx, -dy);
+  const d = Math.hypot(dx, dy);
+  if (d < 70) { s.targetA = s.a; return; }
+  const rel = Math.atan2(dx, -dy) * Math.min(1, (d - 70) / 220);
   s.targetA = s.a + rel;
-  s.wantBoost = input.mouseDown || input.keyBoost;
 }
 
 const camState = { pos: new THREE.Vector3(0, 60, 90), look: new THREE.Vector3() };
